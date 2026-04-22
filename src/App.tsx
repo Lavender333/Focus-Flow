@@ -650,40 +650,6 @@ export default function App() {
   const audioFileSource = useRef<MediaElementAudioSourceNode | null>(null);
   const wakeLock = useRef<any>(null);
 
-  const startRecording = useCallback(() => {
-    if (!audioCtx.current || !masterGainNode.current || typeof MediaRecorder === 'undefined') return;
-    
-    if (!recorderDestination.current) {
-      recorderDestination.current = audioCtx.current.createMediaStreamDestination();
-      masterGainNode.current.connect(recorderDestination.current);
-    }
-    
-    recorderChunks.current = [];
-    const stream = recorderDestination.current.stream;
-    
-    // Fallback to standard mime types
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
-    mediaRecorder.current = new MediaRecorder(stream, { mimeType });
-    
-    mediaRecorder.current.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        recorderChunks.current.push(e.data);
-      }
-    };
-    
-    mediaRecorder.current.onstop = () => {
-      const blob = new Blob(recorderChunks.current, { type: mimeType });
-      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-      const url = URL.createObjectURL(blob);
-      setRecordedUrl(url);
-      setIsRecording(false);
-    };
-    
-    mediaRecorder.current.start();
-    setIsRecording(true);
-    triggerHaptic([50, 20]);
-  }, [recordedUrl, triggerHaptic]);
-
   const stopRecording = useCallback(() => {
     if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
       mediaRecorder.current.stop();
@@ -697,7 +663,7 @@ export default function App() {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextClass) {
         console.error('Web Audio API is not supported in this browser.');
-        return;
+        return null;
       }
 
       audioCtx.current = new AudioContextClass();
@@ -753,7 +719,44 @@ export default function App() {
     if (audioCtx.current?.state === 'suspended') {
       audioCtx.current.resume();
     }
+
+    return audioCtx.current;
   }, [volume, isMuted]);
+
+  const startRecording = useCallback(() => {
+    const ctx = initAudio();
+    if (!ctx || !masterGainNode.current || typeof MediaRecorder === 'undefined') return;
+    
+    if (!recorderDestination.current) {
+      recorderDestination.current = ctx.createMediaStreamDestination();
+      masterGainNode.current.connect(recorderDestination.current);
+    }
+    
+    recorderChunks.current = [];
+    const stream = recorderDestination.current.stream;
+    
+    // Fallback to standard mime types
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+    mediaRecorder.current = new MediaRecorder(stream, { mimeType });
+    
+    mediaRecorder.current.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        recorderChunks.current.push(e.data);
+      }
+    };
+    
+    mediaRecorder.current.onstop = () => {
+      const blob = new Blob(recorderChunks.current, { type: mimeType });
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      const url = URL.createObjectURL(blob);
+      setRecordedUrl(url);
+      setIsRecording(false);
+    };
+    
+    mediaRecorder.current.start();
+    setIsRecording(true);
+    triggerHaptic([50, 20]);
+  }, [initAudio, recordedUrl, triggerHaptic]);
 
   const stopFrequency = useCallback(() => {
     if (spatialInterval.current) {
@@ -837,16 +840,18 @@ export default function App() {
   }, []);
 
   const playFrequency = useCallback((freq: Frequency) => {
-    initAudio();
-    if (audioCtx.current!.state === 'suspended') {
-      audioCtx.current!.resume();
+    const ctx = initAudio();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
     }
 
     if (oscillator.current) {
       stopFrequency();
     }
 
-    const now = audioCtx.current!.currentTime;
+    const now = ctx.currentTime;
 
     // Update Media Session
     if (hasMediaSessionSupport() && typeof MediaMetadata !== 'undefined') {
@@ -862,11 +867,11 @@ export default function App() {
     }
 
     // Oscillator 1 (Left)
-    const osc1 = audioCtx.current!.createOscillator();
+    const osc1 = ctx.createOscillator();
     osc1.type = 'sine';
     
     // Oscillator 2 (Right)
-    const osc2 = audioCtx.current!.createOscillator();
+    const osc2 = ctx.createOscillator();
     osc2.type = 'sine';
 
     if (isHealingMode) {
@@ -875,9 +880,9 @@ export default function App() {
       osc1.frequency.setValueAtTime(freq.hz - 3, now);
       osc2.frequency.setValueAtTime(freq.hz + 3, now);
       
-      const merger = audioCtx.current!.createChannelMerger(2);
-      const g1 = audioCtx.current!.createGain();
-      const g2 = audioCtx.current!.createGain();
+      const merger = ctx.createChannelMerger(2);
+      const g1 = ctx.createGain();
+      const g2 = ctx.createGain();
       
       osc1.connect(g1);
       osc2.connect(g2);
@@ -901,15 +906,15 @@ export default function App() {
           // Subtle movement to avoid breaking binaural beats
           const x = Math.sin(angle) * 2; 
           const z = Math.cos(angle) * 2;
-          pannerNode.current.positionX.setValueAtTime(x, audioCtx.current!.currentTime);
-          pannerNode.current.positionZ.setValueAtTime(z, audioCtx.current!.currentTime);
+          pannerNode.current.positionX.setValueAtTime(x, ctx.currentTime);
+          pannerNode.current.positionZ.setValueAtTime(z, ctx.currentTime);
           angle += 0.015; 
         }
       }, 50);
 
       // Start Brownian Noise
-      const bufferSize = 2 * audioCtx.current!.sampleRate;
-      const noiseBuffer = audioCtx.current!.createBuffer(1, bufferSize, audioCtx.current!.sampleRate);
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
       let lastOut = 0.0;
       for (let i = 0; i < bufferSize; i++) {
@@ -919,7 +924,7 @@ export default function App() {
         output[i] *= 3.5;
       }
       
-      const source = audioCtx.current!.createBufferSource();
+      const source = ctx.createBufferSource();
       source.buffer = noiseBuffer;
       source.loop = true;
       source.connect(noiseGain.current!);
@@ -937,7 +942,7 @@ export default function App() {
     
     // Schumann Resonance (7.83Hz Grounding)
     if (isSchumannActive) {
-      const sOsc = audioCtx.current!.createOscillator();
+      const sOsc = ctx.createOscillator();
       sOsc.type = 'sine';
       sOsc.frequency.setValueAtTime(7.83, now);
       sOsc.connect(schumannGain.current!);
@@ -1085,9 +1090,11 @@ export default function App() {
 
   const playReferenceTone = useCallback((chant: SonicChant) => {
     if (!chant.referenceHz) return;
-    initAudio();
-    if (audioCtx.current!.state === 'suspended') {
-      audioCtx.current!.resume();
+    const ctx = initAudio();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
     }
 
     const isSameChant = activeReferenceId === chant.id;
@@ -1100,15 +1107,15 @@ export default function App() {
     // Set as selected chant so user sees what they are hearing
     setSelectedChant(chant);
 
-    const now = audioCtx.current!.currentTime;
+    const now = ctx.currentTime;
     const freq = chant.referenceHz;
 
     // --- Vocal Synthesis Model ---
     
     // 1. Source: Multiple detuned oscillators for a thick, human-like fundamental
-    const osc1 = audioCtx.current!.createOscillator();
-    const osc2 = audioCtx.current!.createOscillator();
-    const subOsc = audioCtx.current!.createOscillator();
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const subOsc = ctx.createOscillator();
     
     osc1.type = 'sawtooth';
     osc2.type = 'sawtooth';
@@ -1122,17 +1129,17 @@ export default function App() {
     osc2.detune.setValueAtTime(8, now);
     
     // 2. Breath Noise: Adds realism through air-flow simulation
-    const noiseBufferSize = audioCtx.current!.sampleRate * 2;
-    const noiseBuffer = audioCtx.current!.createBuffer(1, noiseBufferSize, audioCtx.current!.sampleRate);
+    const noiseBufferSize = ctx.sampleRate * 2;
+    const noiseBuffer = ctx.createBuffer(1, noiseBufferSize, ctx.sampleRate);
     const noiseData = noiseBuffer.getChannelData(0);
     for (let i = 0; i < noiseBufferSize; i++) {
       noiseData[i] = Math.random() * 2 - 1;
     }
-    const breathSource = audioCtx.current!.createBufferSource();
+    const breathSource = ctx.createBufferSource();
     breathSource.buffer = noiseBuffer;
     breathSource.loop = true;
     
-    const breathGain = audioCtx.current!.createGain();
+    const breathGain = ctx.createGain();
     breathGain.gain.setValueAtTime(0.08, now);
     
     // 3. Formant Filters: Simulating the vocal tract resonances
@@ -1160,11 +1167,11 @@ export default function App() {
     }
 
     const createFormant = (freq: number, q: number, gain: number) => {
-      const filter = audioCtx.current!.createBiquadFilter();
+      const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
       filter.frequency.setValueAtTime(freq, now);
       filter.Q.setValueAtTime(q, now);
-      const g = audioCtx.current!.createGain();
+      const g = ctx.createGain();
       g.gain.setValueAtTime(gain, now);
       filter.connect(g);
       return { filter, gain: g };
@@ -1197,8 +1204,8 @@ export default function App() {
     }
 
     // 4. Vibrato (LFO)
-    const lfo = audioCtx.current!.createOscillator();
-    const lfoGain = audioCtx.current!.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
     lfo.frequency.setValueAtTime(5.2, now); // Slightly faster for more emotion
     lfoGain.gain.setValueAtTime(freq * 0.012, now); // 1.2% depth
     lfo.connect(lfoGain);
@@ -1208,7 +1215,7 @@ export default function App() {
     lfo.start();
 
     // 5. Connections
-    const sourceMix = audioCtx.current!.createGain();
+    const sourceMix = ctx.createGain();
     sourceMix.gain.setValueAtTime(0.5, now);
     
     osc1.connect(sourceMix);
@@ -1217,7 +1224,7 @@ export default function App() {
     breathSource.connect(breathGain);
     breathGain.connect(sourceMix);
 
-    const vocalMix = audioCtx.current!.createGain();
+    const vocalMix = ctx.createGain();
     vocalMix.gain.setValueAtTime(0, now);
     vocalMix.gain.linearRampToValueAtTime(0.8, now + 0.3);
 
@@ -1227,14 +1234,14 @@ export default function App() {
     });
 
     // Final Polish: Gentle Compression and Lowpass
-    const compressor = audioCtx.current!.createDynamicsCompressor();
+    const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-24, now);
     compressor.knee.setValueAtTime(30, now);
     compressor.ratio.setValueAtTime(12, now);
     compressor.attack.setValueAtTime(0.003, now);
     compressor.release.setValueAtTime(0.25, now);
 
-    const finalFilter = audioCtx.current!.createBiquadFilter();
+    const finalFilter = ctx.createBiquadFilter();
     finalFilter.type = 'lowpass';
     finalFilter.frequency.setValueAtTime(6000, now);
 
@@ -1273,6 +1280,14 @@ export default function App() {
       }
     };
   }, [uploadedAudioUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (recordedUrl && recordedUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(recordedUrl);
+      }
+    };
+  }, [recordedUrl]);
 
   const handleAudioUpload = useCallback((file: File | string) => {
     initAudio();
@@ -1383,9 +1398,11 @@ export default function App() {
 
   const toggleMic = useCallback(async () => {
     try {
-      initAudio();
-      if (audioCtx.current && audioCtx.current.state === 'suspended') {
-        await audioCtx.current.resume();
+      const ctx = initAudio();
+      if (!ctx) return;
+
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
       }
 
       if (isMicActive) {
@@ -1426,7 +1443,7 @@ export default function App() {
 
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           micStream.current = stream;
-          micSource.current = audioCtx.current!.createMediaStreamSource(stream);
+          micSource.current = ctx.createMediaStreamSource(stream);
           
           if (analyzer.current) {
             // Disconnect gainNode from analyzer to only show mic input
@@ -1446,7 +1463,7 @@ export default function App() {
     } catch (err) {
       console.error("Toggle mic error:", err);
     }
-  }, [isMicActive, initAudio]);
+  }, [isMicActive, initAudio, triggerHaptic]);
 
   useEffect(() => {
     if (isDroneActive && selectedChant?.referenceHz && droneOsc.current && audioCtx.current) {
@@ -1455,12 +1472,12 @@ export default function App() {
   }, [selectedChant, isDroneActive]);
 
   const toggleDrone = useCallback(() => {
-    initAudio();
-    if (!audioCtx.current || !masterGainNode.current) return;
+    const ctx = initAudio();
+    if (!ctx || !masterGainNode.current) return;
 
     if (isDroneActive) {
       if (droneGain.current) {
-        droneGain.current.gain.exponentialRampToValueAtTime(0.0001, audioCtx.current.currentTime + 1.5);
+        droneGain.current.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
         setTimeout(() => {
           if (droneOsc.current) {
             droneOsc.current.stop();
@@ -1471,19 +1488,19 @@ export default function App() {
       setIsDroneActive(false);
     } else {
       const freq = selectedChant?.referenceHz || 136.1; // Default to 'Om' freq
-      const osc = audioCtx.current.createOscillator();
-      const g = audioCtx.current.createGain();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
       
       osc.type = 'triangle'; // Rich but soft
-      osc.frequency.setValueAtTime(freq / 2, audioCtx.current.currentTime);
+      osc.frequency.setValueAtTime(freq / 2, ctx.currentTime);
       
       // Sub-harmonic for depth
-      const osc2 = audioCtx.current.createOscillator();
+      const osc2 = ctx.createOscillator();
       osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freq / 4, audioCtx.current.currentTime);
+      osc2.frequency.setValueAtTime(freq / 4, ctx.currentTime);
       
-      g.gain.setValueAtTime(0.0001, audioCtx.current.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.15, audioCtx.current.currentTime + 2);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 2);
       
       osc.connect(g);
       osc2.connect(g);
