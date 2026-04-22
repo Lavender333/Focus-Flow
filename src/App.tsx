@@ -3163,14 +3163,12 @@ function SonicChantView({
                     setSelectedChant(chant);
                     if (uploadedAudioUrl) {
                       if (!isAudioPlaying) onTogglePlayback();
-                    } else {
-                      if (!isMicActive) toggleMic();
                     }
                     setIsZenMode(true);
                     triggerHaptic([20, 40]);
                   }}
                   className="p-1.5 rounded-lg bg-app-accent/10 text-app-accent hover:bg-app-accent hover:text-black transition-all"
-                  title={uploadedAudioUrl ? "Quick Start Practice" : "Quick Start Recording"}
+                  title={uploadedAudioUrl ? "Quick Start Practice" : "Open Practice"}
                 >
                   <Play size={12} fill="currentColor" />
                 </button>
@@ -3261,8 +3259,6 @@ function SonicChantView({
                     onClick={() => {
                       if (uploadedAudioUrl) {
                         if (!isAudioPlaying) onTogglePlayback();
-                      } else {
-                        if (!isMicActive) toggleMic();
                       }
                       setIsZenMode(true);
                       triggerHaptic([20, 40]);
@@ -3271,10 +3267,16 @@ function SonicChantView({
                     title="Enter Full Screen Practice"
                   >
                     <Play size={16} fill="currentColor" />
-                    {uploadedAudioUrl ? "Start Practice" : "Start Recording"}
+                    {uploadedAudioUrl ? "Start Practice" : "Open Practice"}
                   </button>
                 </div>
               </div>
+
+              {!uploadedAudioUrl && !isMicActive && (
+                <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">
+                  Microphone stays off until you tap Start Recording above.
+                </p>
+              )}
             </div>
           </motion.div>
         ) : (
