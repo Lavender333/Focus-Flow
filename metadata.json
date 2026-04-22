@@ -1,0 +1,5 @@
+{
+  "name": "FocusFlow",
+  "description": "A focus-optimized companion app combining Solfeggio frequencies, rhythmic tapping guides, and haptic feedback for deep focus and emotional regulation.",
+  "requestFramePermissions": ["microphone"]
+}
