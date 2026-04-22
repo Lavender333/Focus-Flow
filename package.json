@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && cp dist/app.html dist/index.html && mkdir -p assets && cp dist/assets/app.js assets/app.js && cp dist/assets/app.css assets/app.css",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

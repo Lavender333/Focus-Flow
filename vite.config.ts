@@ -8,6 +8,18 @@ export default defineConfig(({mode}) => {
   return {
     base: '/Focus-Flow/',
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: path.resolve(__dirname, 'app.html'),
+        output: {
+          entryFileNames: 'assets/app.js',
+          assetFileNames: assetInfo =>
+            assetInfo.name?.endsWith('.css')
+              ? 'assets/app.css'
+              : 'assets/[name]-[hash][extname]',
+        },
+      },
+    },
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
