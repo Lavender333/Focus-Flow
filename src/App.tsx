@@ -43,6 +43,31 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function getStoredValue(key: string, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch (error) {
+    console.warn(`Unable to read ${key} from localStorage.`, error);
+    return fallback;
+  }
+}
+
+function setStoredValue(key: string, value: string) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Unable to write ${key} to localStorage.`, error);
+  }
+}
+
+function hasMediaSessionSupport() {
+  return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
+}
+
 // --- Types & Constants ---
 
 interface Frequency {
@@ -500,7 +525,7 @@ export default function App() {
   
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
-      const saved = localStorage.getItem('focusflow_profile');
+      const saved = getStoredValue('focusflow_profile');
       if (saved) {
         const parsed = JSON.parse(saved);
         // Basic validation to ensure we have a valid object
@@ -515,7 +540,7 @@ export default function App() {
   });
 
   const [mode, setMode] = useState<'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki'>('frequencies');
-  const [intention, setIntention] = useState(() => localStorage.getItem('focusflow_intention') || '');
+  const [intention, setIntention] = useState(() => getStoredValue('focusflow_intention'));
   const [isMicActive, setIsMicActive] = useState(false);
   const [isReferencePlaying, setIsReferencePlaying] = useState(false);
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null);
@@ -549,11 +574,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem('focusflow_profile', JSON.stringify(userProfile));
+    setStoredValue('focusflow_profile', JSON.stringify(userProfile));
   }, [userProfile]);
 
   useEffect(() => {
-    localStorage.setItem('focusflow_intention', intention);
+    setStoredValue('focusflow_intention', intention);
   }, [intention]);
   
   useEffect(() => {
@@ -626,7 +651,7 @@ export default function App() {
   const wakeLock = useRef<any>(null);
 
   const startRecording = useCallback(() => {
-    if (!audioCtx.current || !masterGainNode.current) return;
+    if (!audioCtx.current || !masterGainNode.current || typeof MediaRecorder === 'undefined') return;
     
     if (!recorderDestination.current) {
       recorderDestination.current = audioCtx.current.createMediaStreamDestination();
@@ -669,7 +694,13 @@ export default function App() {
   // Initialize Audio Context
   const initAudio = useCallback(() => {
     if (!audioCtx.current) {
-      audioCtx.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        console.error('Web Audio API is not supported in this browser.');
+        return;
+      }
+
+      audioCtx.current = new AudioContextClass();
       
       audioCtx.current.onstatechange = () => {
         if (audioCtx.current) setAudioContextState(audioCtx.current.state);
@@ -796,7 +827,7 @@ export default function App() {
       oscillator2.current = null;
     }
 
-    if ('mediaSession' in navigator) {
+    if (hasMediaSessionSupport()) {
       navigator.mediaSession.playbackState = 'paused';
     }
 
@@ -818,7 +849,7 @@ export default function App() {
     const now = audioCtx.current!.currentTime;
 
     // Update Media Session
-    if ('mediaSession' in navigator) {
+    if (hasMediaSessionSupport() && typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: `${freq.label} (${freq.hz}Hz)`,
         artist: 'FocusFlow',
@@ -938,16 +969,20 @@ export default function App() {
 
   // Media Session Handlers
   useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => {
-        if (activeFreq) playFrequency(activeFreq);
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        stopFrequency();
-      });
-      navigator.mediaSession.setActionHandler('stop', () => {
-        stopFrequency();
-      });
+    if (hasMediaSessionSupport()) {
+      try {
+        navigator.mediaSession.setActionHandler('play', () => {
+          if (activeFreq) playFrequency(activeFreq);
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          stopFrequency();
+        });
+        navigator.mediaSession.setActionHandler('stop', () => {
+          stopFrequency();
+        });
+      } catch (error) {
+        console.warn('Media Session action handlers are not fully supported in this browser.', error);
+      }
     }
   }, [activeFreq, playFrequency, stopFrequency]);
 
@@ -1384,6 +1419,11 @@ export default function App() {
       } else {
         // START MIC
         try {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            console.error('Microphone input is not supported in this browser.');
+            return;
+          }
+
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           micStream.current = stream;
           micSource.current = audioCtx.current!.createMediaStreamSource(stream);
