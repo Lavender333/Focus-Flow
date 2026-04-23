@@ -234,6 +234,19 @@ interface UserProfile {
 }
 
 type AppMode = 'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
+type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
+
+interface SessionIntentionPreset {
+  id: SessionIntentionId;
+  label: string;
+  prompt: string;
+  recommendation: string;
+  actionLabel: string;
+  mode: AppMode;
+  frequencyId?: Frequency['id'];
+  icon: typeof Sparkles;
+  iconClassName: string;
+}
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Focus User',
@@ -246,6 +259,62 @@ const DEFAULT_PROFILE: UserProfile = {
   useSchumann: false,
   keepScreenOn: false,
 };
+
+const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
+  {
+    id: 'calm',
+    label: 'Calm',
+    prompt: 'My body feels overloaded and I need to settle down.',
+    recommendation: 'Best path: guided tapping to calm your nervous system first.',
+    actionLabel: 'Start Calm Reset',
+    mode: 'tapping',
+    icon: Heart,
+    iconClassName: 'text-emerald-400'
+  },
+  {
+    id: 'focus',
+    label: 'Focus',
+    prompt: 'I want to lock in and get useful work done.',
+    recommendation: 'Best path: 528Hz focus tone with your work timer.',
+    actionLabel: 'Start Focus Session',
+    mode: 'frequencies',
+    frequencyId: '528',
+    icon: Zap,
+    iconClassName: 'text-app-accent'
+  },
+  {
+    id: 'ground',
+    label: 'Ground',
+    prompt: 'I feel scattered and want to feel stable again.',
+    recommendation: 'Best path: grounding frequencies with Schumann support.',
+    actionLabel: 'Start Grounding Tone',
+    mode: 'frequencies',
+    frequencyId: '396',
+    icon: Activity,
+    iconClassName: 'text-amber-500'
+  },
+  {
+    id: 'heal',
+    label: 'Heal',
+    prompt: 'I want a restorative, inward session.',
+    recommendation: 'Best path: healing frequency mode with a restorative tone.',
+    actionLabel: 'Start Healing Tone',
+    mode: 'frequencies',
+    frequencyId: '639',
+    icon: Sparkles,
+    iconClassName: 'text-pink-400'
+  },
+  {
+    id: 'sleep',
+    label: 'Sleep',
+    prompt: 'I want to wind down and quiet my system.',
+    recommendation: 'Best path: sonic chants for low-stimulation slowing down.',
+    actionLabel: 'Open Sleep Sounds',
+    mode: 'chants',
+    icon: Wind,
+    iconClassName: 'text-sky-400'
+  }
+];
 
 // --- Components ---
 
@@ -543,7 +612,12 @@ export default function App() {
 
   const [mode, setMode] = useState<AppMode>('frequencies');
   const [showStartHere, setShowStartHere] = useState(() => getStoredValue('focusflow_start_here_dismissed') !== 'true');
-  const [intention, setIntention] = useState(() => getStoredValue('focusflow_intention'));
+  const [selectedSessionIntention, setSelectedSessionIntention] = useState<SessionIntentionId>(() => {
+    const storedIntention = getStoredValue('focusflow_session_intention', 'focus');
+    return SESSION_INTENTION_PRESETS.some((preset) => preset.id === storedIntention)
+      ? (storedIntention as SessionIntentionId)
+      : 'focus';
+  });
   const [isMicActive, setIsMicActive] = useState(false);
   const [isReferencePlaying, setIsReferencePlaying] = useState(false);
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null);
@@ -603,8 +677,8 @@ export default function App() {
   }, [userProfile]);
 
   useEffect(() => {
-    setStoredValue('focusflow_intention', intention);
-  }, [intention]);
+    setStoredValue('focusflow_session_intention', selectedSessionIntention);
+  }, [selectedSessionIntention]);
   
   useEffect(() => {
     if ((!isMicActive && !isAudioPlaying && activeReferenceId === null && !isPlaying) || !analyzer.current) {
@@ -982,6 +1056,27 @@ export default function App() {
     setActiveFreq(freq);
     setIsPlaying(true);
   }, [initAudio, volume, isMuted, stopFrequency, isHealingMode, isSchumannActive]);
+
+  const launchSessionIntention = useCallback((intentionId: SessionIntentionId) => {
+    const preset = SESSION_INTENTION_PRESETS.find((entry) => entry.id === intentionId);
+    if (!preset) return;
+
+    setSelectedSessionIntention(intentionId);
+    dismissStartHere();
+
+    if (preset.frequencyId) {
+      const targetFrequency = SOLFEGGIO_FREQUENCIES.find((frequency) => frequency.id === preset.frequencyId);
+      setMode('frequencies');
+      if (targetFrequency) {
+        playFrequency(targetFrequency);
+      }
+      triggerHaptic([20, 40]);
+      return;
+    }
+
+    setMode(preset.mode);
+    triggerHaptic(20);
+  }, [dismissStartHere, playFrequency]);
 
   useEffect(() => {
     if (masterGainNode.current && audioCtx.current) {
@@ -1654,13 +1749,13 @@ export default function App() {
 
       {/* Main Container */}
       <main className={cn(
-        "glass rounded-[32px] shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all duration-700 relative",
+        "glass rounded-[32px] shadow-2xl overflow-hidden flex flex-row transition-all duration-700 relative",
         isZenMode ? "w-screen h-screen rounded-none fixed inset-0 z-50" : "w-full max-w-4xl h-[95vh] sm:h-[90vh] md:h-[700px] max-h-[900px]"
       )}>
         
         {/* Sidebar Navigation */}
         <nav className={cn(
-          "w-full md:w-20 bg-black/40 border-t md:border-t-0 md:border-r border-white/5 flex md:flex-col items-center justify-start md:justify-center gap-1 sm:gap-6 p-1 sm:p-4 transition-all duration-500 overflow-x-auto md:overflow-x-visible no-scrollbar flex-nowrap order-last md:order-first mask-fade-right md:mask-none px-4 md:px-0",
+          "w-[86px] sm:w-20 bg-black/40 border-r border-white/5 flex flex-col items-center justify-start gap-2 sm:gap-4 p-2 sm:p-4 transition-all duration-500 overflow-y-auto overflow-x-visible no-scrollbar shrink-0",
           isZenMode && "opacity-0 pointer-events-none -translate-x-20"
         )}>
           <NavButton 
@@ -1718,7 +1813,7 @@ export default function App() {
             label="Profile" 
           />
           
-          <div className="hidden md:flex flex-col items-center mt-auto pb-4 gap-4">
+           <div className="flex flex-col items-center mt-auto pb-2 sm:pb-4 gap-3 sm:gap-4">
              {(isPlaying || isMicActive || isAudioPlaying || isReferencePlaying || activeHaptic) && (
                 <button 
                   onClick={stopAll}
@@ -1733,7 +1828,7 @@ export default function App() {
         </nav>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col relative overflow-hidden">
+  <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
           
           {/* Immersive Background */}
           <AnimatePresence>
@@ -1762,7 +1857,7 @@ export default function App() {
 
           {/* Header */}
           <header className={cn(
-            "p-4 sm:p-6 border-b border-white/5 flex items-center justify-between transition-all duration-500 z-10",
+            "p-4 sm:p-6 border-b border-white/5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-500 z-10",
             isZenMode && "opacity-0 pointer-events-none -translate-y-20"
           )}>
             <div className="hidden sm:block">
@@ -1770,7 +1865,7 @@ export default function App() {
               <p className="text-[8px] sm:text-xs text-app-muted font-mono uppercase tracking-widest">Neural Harmony & Focus</p>
             </div>
             
-            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-x-auto no-scrollbar flex-nowrap pb-1 sm:pb-0 mask-fade-right sm:mask-none">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-visible pb-1 sm:pb-0">
               <button 
                 onClick={() => {
                   dismissStartHere();
@@ -1782,7 +1877,7 @@ export default function App() {
                 )}
               >
                 <BookOpen size={14} />
-                <span className="text-[10px] font-mono uppercase tracking-widest hidden xs:inline">Start Here</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest">Start Here</span>
               </button>
               {userProfile.preferredFrequencyId && (
                 <button 
@@ -1813,7 +1908,7 @@ export default function App() {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
               >
                 <Maximize2 size={14} className="text-app-accent" />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted hidden xs:inline">Zen</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Zen</span>
               </button>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shrink-0">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Visuals</span>
@@ -1846,7 +1941,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shrink-0">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted hidden sm:inline">Healing Mode</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Healing Mode</span>
                 <button 
                   onClick={() => setIsHealingMode(!isHealingMode)}
                   className={cn(
@@ -1892,7 +1987,7 @@ export default function App() {
                 step="0.01" 
                 value={volume} 
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-16 sm:w-24 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-app-accent hidden xs:block"
+                className="w-24 sm:w-24 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-app-accent"
               />
             </div>
           </header>
@@ -1983,9 +2078,9 @@ export default function App() {
                             <BookOpen size={16} />
                             <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Start Here</span>
                           </div>
-                          <h2 className="text-2xl font-serif italic">Pick one simple path</h2>
+                          <h2 className="text-2xl font-serif italic">Choose your session intention</h2>
                           <p className="text-xs sm:text-sm text-app-muted max-w-2xl leading-relaxed">
-                            New users should start with one lane, not every toggle. Choose a path below, then use the tool bar to switch sections after you know what each one does.
+                            Start with what you need right now. Pick one intention and Focus Flow will recommend the best first move instead of making you scan every tool.
                           </p>
                         </div>
                         <button
@@ -1997,32 +2092,75 @@ export default function App() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {SESSION_INTENTION_PRESETS.map(({ id, label }) => (
+                          <button
+                            key={id}
+                            onClick={() => setSelectedSessionIntention(id)}
+                            className={cn(
+                              "px-4 py-2 rounded-full border text-[10px] font-mono uppercase tracking-widest transition-colors",
+                              selectedSessionIntention === id
+                                ? "bg-app-accent text-black border-app-accent"
+                                : "bg-white/5 border-white/10 text-app-muted hover:bg-white/10 hover:text-white"
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {(() => {
+                        const activePreset = SESSION_INTENTION_PRESETS.find((preset) => preset.id === selectedSessionIntention) ?? SESSION_INTENTION_PRESETS[0];
+                        const PresetIcon = activePreset.icon;
+
+                        return (
+                          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)] gap-4">
+                            <div className="p-4 rounded-2xl bg-black/30 border border-white/10">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
+                                  <PresetIcon size={18} className={activePreset.iconClassName} />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Recommended first move</p>
+                                  <h3 className="text-lg font-serif italic">{activePreset.label}</h3>
+                                </div>
+                              </div>
+                              <p className="text-sm text-white/80 leading-relaxed mb-3">{activePreset.prompt}</p>
+                              <p className="text-xs text-app-muted leading-relaxed">{activePreset.recommendation}</p>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-app-accent/10 border border-app-accent/20 flex flex-col gap-3 justify-between">
+                              <div>
+                                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold mb-2">One tap action</p>
+                                <p className="text-xs text-app-muted leading-relaxed">
+                                  Focus Flow will take you straight into the matching mode so you can start instead of deciding between menus.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => launchSessionIntention(activePreset.id)}
+                                className="w-full text-left p-4 rounded-2xl bg-app-accent text-black hover:brightness-105 transition-colors"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-1">{activePreset.actionLabel}</h3>
+                                    <p className="text-xs text-black/70 leading-relaxed">Open the recommended tool now.</p>
+                                  </div>
+                                  <ChevronRight size={18} />
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
                         <button
                           onClick={startQuickSession}
-                          className="text-left p-4 rounded-2xl bg-app-accent/10 border border-app-accent/20 hover:bg-app-accent/15 transition-colors"
+                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
                         >
                           <Zap size={16} className="text-app-accent mb-3" />
                           <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Quick Session</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Start your preferred tone immediately. Best if you just want the app to do something useful right now.</p>
-                        </button>
-
-                        <button
-                          onClick={() => openModeFromStartHere('tapping')}
-                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                        >
-                          <Fingerprint size={16} className="text-emerald-400 mb-3" />
-                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Calm Your Body</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Open tapping if you feel anxious, restless, or overwhelmed and want a guided nervous-system reset.</p>
-                        </button>
-
-                        <button
-                          onClick={() => openModeFromStartHere('timer')}
-                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                        >
-                          <Timer size={16} className="text-blue-400 mb-3" />
-                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Focus Sprint</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Use the timer for a structured work session with fewer decisions and a clear start-and-stop loop.</p>
+                          <p className="text-xs text-app-muted leading-relaxed">Skip the recommendation and start your preferred tone immediately.</p>
                         </button>
 
                         <button
@@ -2031,26 +2169,20 @@ export default function App() {
                         >
                           <HelpCircle size={16} className="text-amber-400 mb-3" />
                           <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Learn The Tools</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Open the guide if you want the app explained in plain language before you start exploring modes.</p>
+                          <p className="text-xs text-app-muted leading-relaxed">Read the guide first if you want the app explained before you begin.</p>
+                        </button>
+
+                        <button
+                          onClick={() => openModeFromStartHere('profile')}
+                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        >
+                          <User size={16} className="text-blue-400 mb-3" />
+                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Tune Your Defaults</h3>
+                          <p className="text-xs text-app-muted leading-relaxed">Adjust your preferred frequency, timer length, and screen behavior.</p>
                         </button>
                       </div>
                     </div>
                   )}
-
-                  {/* Daily Intention */}
-                  <div className="mb-8 p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-app-accent/10 to-transparent border border-app-accent/20">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Sparkles size={16} className="text-app-accent" />
-                      <h2 className="text-xs font-mono uppercase tracking-widest text-app-accent font-bold">Session Intention</h2>
-                    </div>
-                    <input 
-                      type="text"
-                      placeholder="What is your focus for this healing session? (e.g. Clarity, Grounding, Love)"
-                      value={intention}
-                      onChange={(e) => setIntention(e.target.value)}
-                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-app-accent/50 transition-colors placeholder:text-white/20"
-                    />
-                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {userProfile.preferredFrequencyId && (
@@ -2353,7 +2485,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
       onClick={onClick}
       style={{ WebkitTapHighlightColor: 'transparent' }}
       className={cn(
-        "flex flex-col items-center gap-1 transition-all duration-300 group shrink-0 min-w-[56px] sm:min-w-[70px] cursor-pointer outline-none pb-1 sm:pb-0",
+        "flex flex-col items-center gap-1.5 transition-all duration-300 group w-full cursor-pointer outline-none py-1",
         active ? "text-app-accent" : "text-app-muted hover:text-white"
       )}
     >
@@ -2364,7 +2496,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
         {React.cloneElement(icon as React.ReactElement, { size: 20, className: "sm:w-6 sm:h-6 w-5 h-5 transition-transform group-active:scale-90" } as any)}
       </div>
       <span className={cn(
-        "text-[8px] sm:text-[10px] font-mono uppercase tracking-tighter font-medium transition-opacity",
+        "text-[8px] sm:text-[10px] leading-tight text-center font-mono uppercase tracking-tight font-medium transition-opacity whitespace-normal max-w-[72px] sm:max-w-none px-1",
         active ? "opacity-100" : "opacity-60"
       )}>{label}</span>
     </button>
@@ -3408,6 +3540,80 @@ function SonicChantView({
 }
 
 function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: () => void, onOpenMode: (mode: AppMode) => void }) {
+  const guideTopics: Array<{
+    title: string;
+    description: string;
+    icon: typeof Sparkles;
+    iconClassName: string;
+    mode: AppMode;
+    cta: string;
+  }> = [
+    {
+      title: 'Solfeggio Frequencies',
+      description: 'Ancient tones used in sacred music and healing. Each frequency is believed to resonate with specific energy centers in the body. For example, 528Hz is known as the "Love Frequency" or "Miracle Tone," often used for DNA repair and clarity.',
+      icon: Sparkles,
+      iconClassName: 'text-app-accent',
+      mode: 'frequencies',
+      cta: 'Open Frequencies'
+    },
+    {
+      title: 'Schumann Resonance',
+      description: 'Often called the "Earth\'s Heartbeat," this 7.83Hz frequency is the natural electromagnetic resonance of the Earth\'s atmosphere. It is used for grounding, reducing stress, and synchronizing your biological rhythms with the planet.',
+      icon: Activity,
+      iconClassName: 'text-amber-500',
+      mode: 'frequencies',
+      cta: 'Open Grounding Tones'
+    },
+    {
+      title: 'Healing Mode (Binaural)',
+      description: 'When active, the app sends slightly different frequencies to each ear. Your brain perceives the difference as a third tone-a binaural beat. We use a 6Hz Theta beat, which is associated with deep meditation, creativity, and REM sleep.',
+      icon: Brain,
+      iconClassName: 'text-blue-400',
+      mode: 'frequencies',
+      cta: 'Open Healing Mode'
+    },
+    {
+      title: 'EFT Tapping',
+      description: 'Emotional Freedom Technique involves tapping on specific meridian points while focusing on a stressor. This physical stimulation sends signals to the amygdala (the brain\'s fear center) to reduce the "fight or flight" response.',
+      icon: Fingerprint,
+      iconClassName: 'text-emerald-400',
+      mode: 'tapping',
+      cta: 'Open Tapping'
+    },
+    {
+      title: 'Sacred Visuals',
+      description: 'The visualizer uses real-time audio analysis to generate sacred geometry patterns. These visuals are designed to be hypnotic and calming, helping to anchor your focus and facilitate a flow state through visual-auditory synchronization.',
+      icon: Eye,
+      iconClassName: 'text-purple-400',
+      mode: 'frequencies',
+      cta: 'Open Visualizer'
+    },
+    {
+      title: 'Zen Mode',
+      description: 'Zen Mode removes all interface elements except the core experience. It is designed for deep work or meditation where you want zero distractions. Simply click the icon in the header to enter, and the "minimize" icon to exit.',
+      icon: Maximize2,
+      iconClassName: 'text-white',
+      mode: 'frequencies',
+      cta: 'Open Focus View'
+    },
+    {
+      title: 'Haptic Feedback',
+      description: 'On mobile devices, haptics provide physical pulses to guide your breathing or grounding. On desktop, we use low-frequency audio pulses to simulate this effect. These patterns help regulate the nervous system by providing a rhythmic physical anchor.',
+      icon: Zap,
+      iconClassName: 'text-app-accent',
+      mode: 'haptics',
+      cta: 'Open Haptics'
+    },
+    {
+      title: 'Sonic Vocalizations',
+      description: 'Using your own voice is one of the most powerful ways to stimulate the Vagus Nerve. Sounds like "VOO" create deep vibrations in the chest that signal safety to the brainstem. Bija mantras and vowel resonances target specific energy centers to ground or clear your energy.',
+      icon: Mic,
+      iconClassName: 'text-app-accent',
+      mode: 'chants',
+      cta: 'Open Vocal Practice'
+    }
+  ];
+
   return (
     <div className="h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-2 pb-12">
       <div className="flex flex-col gap-2">
@@ -3454,94 +3660,41 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
         </div>
       </section>
 
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-serif italic">Tap a topic to open it</h3>
+          <p className="text-xs text-app-muted">Each guide card now takes you straight to the matching tool.</p>
+        </div>
+        <button
+          onClick={onStartQuickSession}
+          className="shrink-0 px-4 py-2 rounded-full bg-app-accent text-black text-[10px] font-mono uppercase tracking-widest font-bold hover:scale-[1.02] transition-transform"
+        >
+          Quick Start
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Solfeggio */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Sparkles size={18} className="text-app-accent" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Solfeggio Frequencies</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            Ancient tones used in sacred music and healing. Each frequency is believed to resonate with specific energy centers in the body. For example, 528Hz is known as the "Love Frequency" or "Miracle Tone," often used for DNA repair and clarity.
-          </p>
-        </section>
-
-        {/* Schumann */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Activity size={18} className="text-amber-500" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Schumann Resonance</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            Often called the "Earth's Heartbeat," this 7.83Hz frequency is the natural electromagnetic resonance of the Earth's atmosphere. It is used for grounding, reducing stress, and synchronizing your biological rhythms with the planet.
-          </p>
-        </section>
-
-        {/* Healing Mode */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Brain size={18} className="text-blue-400" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Healing Mode (Binaural)</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            When active, the app sends slightly different frequencies to each ear. Your brain perceives the difference as a third tone—a binaural beat. We use a 6Hz Theta beat, which is associated with deep meditation, creativity, and REM sleep.
-          </p>
-        </section>
-
-        {/* EFT Tapping */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Fingerprint size={18} className="text-emerald-400" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">EFT Tapping</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            Emotional Freedom Technique involves tapping on specific meridian points while focusing on a stressor. This physical stimulation sends signals to the amygdala (the brain's fear center) to reduce the "fight or flight" response.
-          </p>
-        </section>
-
-        {/* Visualizer */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Eye size={18} className="text-purple-400" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Sacred Visuals</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            The visualizer uses real-time audio analysis to generate sacred geometry patterns. These visuals are designed to be hypnotic and calming, helping to anchor your focus and facilitate a flow state through visual-auditory synchronization.
-          </p>
-        </section>
-
-        {/* Zen Mode */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Maximize2 size={18} className="text-white" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Zen Mode</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            Zen Mode removes all interface elements except the core experience. It is designed for deep work or meditation where you want zero distractions. Simply click the icon in the header to enter, and the "minimize" icon to exit.
-          </p>
-        </section>
-
-        {/* Haptics */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Zap size={18} className="text-app-accent" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Haptic Feedback</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            On mobile devices, haptics provide physical pulses to guide your breathing or grounding. On desktop, we use low-frequency audio pulses to simulate this effect. These patterns help regulate the nervous system by providing a rhythmic physical anchor.
-          </p>
-        </section>
-
-        {/* Sonic Vocalizations */}
-        <section className="p-6 rounded-3xl bg-white/5 border border-white/10 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Mic size={18} className="text-app-accent" />
-            <h3 className="text-xs font-mono uppercase tracking-widest font-bold">Sonic Vocalizations</h3>
-          </div>
-          <p className="text-xs text-app-muted leading-relaxed">
-            Using your own voice is one of the most powerful ways to stimulate the Vagus Nerve. Sounds like "VOO" create deep vibrations in the chest that signal safety to the brainstem. Bija mantras and vowel resonances target specific energy centers to ground or clear your energy.
-          </p>
-        </section>
+        {guideTopics.map(({ title, description, icon: Icon, iconClassName, mode, cta }) => (
+          <button
+            key={title}
+            onClick={() => onOpenMode(mode)}
+            className="group text-left p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-app-accent/40 hover:bg-white/[0.07] transition-all flex flex-col gap-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Icon size={18} className={iconClassName} />
+                <h3 className="text-xs font-mono uppercase tracking-widest font-bold">{title}</h3>
+              </div>
+              <ChevronRight size={16} className="text-app-muted group-hover:text-app-accent transition-colors shrink-0" />
+            </div>
+            <p className="text-xs text-app-muted leading-relaxed">
+              {description}
+            </p>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">
+              {cta}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Usage Strategy Section */}
@@ -3853,11 +4006,36 @@ function HandPanView({
     setTimeout(() => setActiveNote(null), 300);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!recordedUrl) return;
+
+    const fileName = `focusflow-handpan-${new Date().getTime()}.webm`;
+
+    try {
+      const response = await fetch(recordedUrl);
+      const blob = await response.blob();
+      const file = new File([blob], fileName, { type: blob.type || 'audio/webm' });
+
+      if (
+        typeof navigator !== 'undefined' &&
+        'share' in navigator &&
+        'canShare' in navigator &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({
+          files: [file],
+          title: 'Focus Flow Hand Pan Recording',
+          text: 'Hand Pan recording from Focus Flow'
+        });
+        return;
+      }
+    } catch (error) {
+      console.warn('Native share failed, falling back to direct download.', error);
+    }
+
     const a = document.createElement('a');
     a.href = recordedUrl;
-    a.download = `focusflow-handpan-${new Date().getTime()}.webm`;
+    a.download = fileName;
     a.click();
   };
 
@@ -3916,7 +4094,7 @@ function HandPanView({
               <button
                 onClick={handleExport}
                 className="p-2 rounded-lg bg-white/10 text-app-accent hover:bg-app-accent hover:text-black transition-all"
-                title="Export WebM"
+                title="Share or Export"
               >
                 <Upload size={14} />
               </button>
