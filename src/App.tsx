@@ -233,6 +233,8 @@ interface UserProfile {
   keepScreenOn: boolean;
 }
 
+type AppMode = 'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
+
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Focus User',
   focusMinutes: 25,
@@ -539,7 +541,8 @@ export default function App() {
     return DEFAULT_PROFILE;
   });
 
-  const [mode, setMode] = useState<'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki'>('frequencies');
+  const [mode, setMode] = useState<AppMode>('frequencies');
+  const [showStartHere, setShowStartHere] = useState(() => getStoredValue('focusflow_start_here_dismissed') !== 'true');
   const [intention, setIntention] = useState(() => getStoredValue('focusflow_intention'));
   const [isMicActive, setIsMicActive] = useState(false);
   const [isReferencePlaying, setIsReferencePlaying] = useState(false);
@@ -571,6 +574,28 @@ export default function App() {
     if ('vibrate' in navigator) {
       navigator.vibrate(pattern);
     }
+  };
+
+  const dismissStartHere = () => {
+    setShowStartHere(false);
+    setStoredValue('focusflow_start_here_dismissed', 'true');
+  };
+
+  const openModeFromStartHere = (nextMode: AppMode) => {
+    dismissStartHere();
+    setMode(nextMode);
+    triggerHaptic(20);
+  };
+
+  const startQuickSession = () => {
+    const starterFrequency = SOLFEGGIO_FREQUENCIES.find(
+      (frequency) => frequency.id === (userProfile.preferredFrequencyId ?? '528')
+    ) ?? SOLFEGGIO_FREQUENCIES[0];
+
+    dismissStartHere();
+    setMode('frequencies');
+    playFrequency(starterFrequency);
+    triggerHaptic(20);
   };
 
   useEffect(() => {
@@ -998,7 +1023,8 @@ export default function App() {
         try {
           wakeLock.current = await (navigator as any).wakeLock.request('screen');
         } catch (err) {
-          console.error(`${err.name}, ${err.message}`);
+          const message = err instanceof Error ? `${err.name}, ${err.message}` : 'Wake lock request failed.';
+          console.error(message);
         }
       }
     };
@@ -1746,14 +1772,17 @@ export default function App() {
             
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-x-auto no-scrollbar flex-nowrap pb-1 sm:pb-0 mask-fade-right sm:mask-none">
               <button 
-                onClick={() => setMode('guide')}
+                onClick={() => {
+                  dismissStartHere();
+                  setMode('guide');
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
                   mode === 'guide' ? "bg-app-accent/20 border-app-accent text-app-accent" : "bg-white/5 border-white/10 hover:bg-white/10 text-app-muted"
                 )}
               >
-                <HelpCircle size={14} />
-                <span className="text-[10px] font-mono uppercase tracking-widest hidden xs:inline">Guide</span>
+                <BookOpen size={14} />
+                <span className="text-[10px] font-mono uppercase tracking-widest hidden xs:inline">Start Here</span>
               </button>
               {userProfile.preferredFrequencyId && (
                 <button 
@@ -1946,6 +1975,68 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
+                  {showStartHere && (
+                    <div className="mb-8 p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-white/6 to-app-accent/5 border border-white/10">
+                      <div className="flex items-start justify-between gap-4 mb-5">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-app-accent">
+                            <BookOpen size={16} />
+                            <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Start Here</span>
+                          </div>
+                          <h2 className="text-2xl font-serif italic">Pick one simple path</h2>
+                          <p className="text-xs sm:text-sm text-app-muted max-w-2xl leading-relaxed">
+                            New users should start with one lane, not every toggle. Choose a path below, then use the tool bar to switch sections after you know what each one does.
+                          </p>
+                        </div>
+                        <button
+                          onClick={dismissStartHere}
+                          className="p-2 rounded-xl bg-white/5 border border-white/10 text-app-muted hover:text-white hover:bg-white/10 transition-colors"
+                          aria-label="Dismiss start guide"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                        <button
+                          onClick={startQuickSession}
+                          className="text-left p-4 rounded-2xl bg-app-accent/10 border border-app-accent/20 hover:bg-app-accent/15 transition-colors"
+                        >
+                          <Zap size={16} className="text-app-accent mb-3" />
+                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Quick Session</h3>
+                          <p className="text-xs text-app-muted leading-relaxed">Start your preferred tone immediately. Best if you just want the app to do something useful right now.</p>
+                        </button>
+
+                        <button
+                          onClick={() => openModeFromStartHere('tapping')}
+                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        >
+                          <Fingerprint size={16} className="text-emerald-400 mb-3" />
+                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Calm Your Body</h3>
+                          <p className="text-xs text-app-muted leading-relaxed">Open tapping if you feel anxious, restless, or overwhelmed and want a guided nervous-system reset.</p>
+                        </button>
+
+                        <button
+                          onClick={() => openModeFromStartHere('timer')}
+                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        >
+                          <Timer size={16} className="text-blue-400 mb-3" />
+                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Focus Sprint</h3>
+                          <p className="text-xs text-app-muted leading-relaxed">Use the timer for a structured work session with fewer decisions and a clear start-and-stop loop.</p>
+                        </button>
+
+                        <button
+                          onClick={() => openModeFromStartHere('guide')}
+                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        >
+                          <HelpCircle size={16} className="text-amber-400 mb-3" />
+                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Learn The Tools</h3>
+                          <p className="text-xs text-app-muted leading-relaxed">Open the guide if you want the app explained in plain language before you start exploring modes.</p>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Daily Intention */}
                   <div className="mb-8 p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-app-accent/10 to-transparent border border-app-accent/20">
                     <div className="flex items-center gap-3 mb-3">
@@ -2198,7 +2289,7 @@ export default function App() {
                   exit={{ opacity: 0, y: -20 }}
                   className="h-full"
                 >
-                  <GuideView />
+                  <GuideView onStartQuickSession={startQuickSession} onOpenMode={openModeFromStartHere} />
                 </motion.div>
               )}
 
@@ -3316,13 +3407,52 @@ function SonicChantView({
   );
 }
 
-function GuideView() {
+function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: () => void, onOpenMode: (mode: AppMode) => void }) {
   return (
     <div className="h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-2 pb-12">
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-serif italic mb-1">The FocusFlow Guide</h2>
         <p className="text-sm text-app-muted">Understanding the science and purpose behind your neural harmony tools.</p>
       </div>
+
+      <section className="p-6 rounded-[32px] bg-gradient-to-br from-app-accent/10 to-white/5 border border-app-accent/15 flex flex-col gap-5">
+        <div className="flex items-center gap-2 text-app-accent">
+          <BookOpen size={16} />
+          <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Choose Your First Step</span>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-2xl font-serif italic">You do not need every tool</h3>
+          <p className="text-sm text-app-muted leading-relaxed max-w-2xl">
+            Most people only need one starting point. Pick the outcome you want first, then expand into the other sections once the app feels familiar.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            onClick={onStartQuickSession}
+            className="text-left p-4 rounded-2xl bg-black/30 border border-app-accent/20 hover:bg-black/40 transition-colors"
+          >
+            <Zap size={16} className="text-app-accent mb-3" />
+            <h4 className="text-xs font-mono uppercase tracking-widest font-bold mb-2">I want to start now</h4>
+            <p className="text-xs text-app-muted leading-relaxed">Play a tone immediately and keep the experience simple.</p>
+          </button>
+          <button
+            onClick={() => onOpenMode('tapping')}
+            className="text-left p-4 rounded-2xl bg-black/30 border border-white/10 hover:bg-black/40 transition-colors"
+          >
+            <Fingerprint size={16} className="text-emerald-400 mb-3" />
+            <h4 className="text-xs font-mono uppercase tracking-widest font-bold mb-2">I need to calm down</h4>
+            <p className="text-xs text-app-muted leading-relaxed">Open tapping for a guided body-based reset.</p>
+          </button>
+          <button
+            onClick={() => onOpenMode('timer')}
+            className="text-left p-4 rounded-2xl bg-black/30 border border-white/10 hover:bg-black/40 transition-colors"
+          >
+            <Timer size={16} className="text-blue-400 mb-3" />
+            <h4 className="text-xs font-mono uppercase tracking-widest font-bold mb-2">I want focused work</h4>
+            <p className="text-xs text-app-muted leading-relaxed">Use the timer if you want the clearest productivity path.</p>
+          </button>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Solfeggio */}
