@@ -162,35 +162,36 @@ interface SonicChant {
 }
 
 const SONIC_CHANTS: SonicChant[] = [
+  // Guide pitches are practice anchors only; these traditions do not prescribe one universal Hz value.
   // Vagus Nerve
-  { id: 'voo', label: 'Vagus Reset', sound: 'VOO', instruction: 'Inhale deeply, then release a low, resonant "VOOO" sound, feeling the vibration deep in your belly.', benefit: 'Instantly calms the nervous system by signaling safety to the brainstem.', category: 'vagus', resonates: 'Chest & Abdomen', referenceHz: 85 },
-  { id: 'mom', label: 'Nurturing Connection', sound: 'MOM', instruction: 'Gently repeat "MOM-MOM-MOM" with a soft, rhythmic hum.', benefit: 'Activates the ventral vagal system to foster feelings of warmth and joy.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 174 },
-  { id: 'err', label: 'Earth Grounding', sound: 'ERR', instruction: 'Produce a low-pitched, steady "ERRR" sound, focusing on your root.', benefit: 'Provides deep grounding and stabilizes the lower abdominal energy.', category: 'vagus', resonates: 'Lower Abdomen', referenceHz: 73 },
-  { id: 'hum', label: 'Celestial Hum', sound: 'Humming', instruction: 'Close your lips and hum softly, letting the vibration fill your sinuses and head.', benefit: 'Directly stimulates vagal fibers and promotes nitric oxide release for healing.', category: 'vagus', resonates: 'Throat & Sinuses', referenceHz: 128 },
-  { id: 'om', label: 'Universal Harmony', sound: 'OM', instruction: 'Chant "A-U-M" slowly, feeling the sound rise from your heart to the crown of your head.', benefit: 'A sacred frequency that harmonizes your entire being with the universe.', category: 'vagus', resonates: 'Chest, Throat & Head', referenceHz: 136.1 },
-  { id: 'mmm', label: 'Inner Peace', sound: 'MMM', instruction: 'Sustain a gentle "MMM" sound, focusing on the vibration in your throat.', benefit: 'Soothes the thyroid and parathyroid while calming the mind.', category: 'vagus', resonates: 'Throat & Chest', referenceHz: 98 },
-  { id: 'gargle', label: 'Vagal Activation', sound: 'Gargle', instruction: 'Gargle with pure water, making a loud, vigorous sound for 30-60 seconds.', benefit: 'Provides direct physical stimulation to the vagus nerve for rapid regulation.', category: 'vagus', resonates: 'Throat' },
+  { id: 'voo', label: 'Low Exhale', sound: 'VOO', instruction: 'Inhale gently, then release a low, steady "VOOO" on a long exhale. Let the pitch sit where it feels comfortable.', benefit: 'Encourages slower breathing, longer exhalation, and body awareness.', category: 'vagus', resonates: 'Chest & Abdomen', referenceHz: 98 },
+  { id: 'mom', label: 'Soft Hum', sound: 'MOM', instruction: 'Gently repeat "MOM-MOM-MOM" with an easy hum. Keep the jaw loose and the sound unforced.', benefit: 'Uses rhythmic humming as a simple, soothing vocal anchor.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.8 },
+  { id: 'err', label: 'Grounding Tone', sound: 'ERR', instruction: 'Produce a low, steady "ERRR" sound and keep the breath smooth rather than loud.', benefit: 'Offers a low-pitched focus point for grounding and steady breathing.', category: 'vagus', resonates: 'Lower Chest', referenceHz: 98 },
+  { id: 'hum', label: 'Resonant Hum', sound: 'Humming', instruction: 'Close your lips and hum softly, noticing vibration around the lips, nose, and face.', benefit: 'Supports relaxed breathing and nasal/facial resonance without needing volume.', category: 'vagus', resonates: 'Face & Sinuses', referenceHz: 130.8 },
+  { id: 'om', label: 'A-U-M Practice', sound: 'OM', instruction: 'Chant "A-U-M" slowly, moving from an open vowel into a closed-mouth hum.', benefit: 'A traditional meditation sound used for attention, breath pacing, and resonance.', category: 'vagus', resonates: 'Chest, Throat & Head', referenceHz: 136.1 },
+  { id: 'mmm', label: 'Closed Hum', sound: 'MMM', instruction: 'Sustain a gentle "MMM" sound with lips closed and shoulders relaxed.', benefit: 'Gives the breath a quiet, steady tone for calming attention.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.8 },
+  { id: 'gargle', label: 'Throat Warmup', sound: 'Gargle', instruction: 'Gargle with water for a short, comfortable round. Stop if it feels irritating or strained.', benefit: 'A practical throat warmup; use gently and skip it when uncomfortable.', category: 'vagus', resonates: 'Throat' },
   
   // Six Healing Sounds
-  { id: 'si', label: 'Lung Purification', sound: 'SI (Sss)', instruction: 'Exhale with a sharp but controlled "SSSS" sound, visualizing white light.', benefit: 'Releases grief and sadness, replacing them with courage and clarity.', category: 'healing', resonates: 'Lungs', referenceHz: 417 },
-  { id: 'chui', label: 'Kidney Restoration', sound: 'CHUI (Chway)', instruction: 'Exhale with a soft "CHWAY" sound, like blowing out a candle.', benefit: 'Transforms fear into deep calmness and ancestral wisdom.', category: 'healing', resonates: 'Kidneys', referenceHz: 396 },
-  { id: 'xu', label: 'Liver Renewal', sound: 'XU (Shu)', instruction: 'Make a gentle "SHHHU" sound, visualizing a vibrant green forest.', benefit: 'Releases anger and frustration, inviting kindness and expansion.', category: 'healing', resonates: 'Liver', referenceHz: 639 },
-  { id: 'he', label: 'Heart Radiance', sound: 'HE (Her)', instruction: 'Exhale with a soft, warm "HERRR" sound from the back of the throat.', benefit: 'Transforms restlessness and anxiety into pure joy and gratitude.', category: 'healing', resonates: 'Heart', referenceHz: 528 },
-  { id: 'hu', label: 'Spleen Balance', sound: 'HU (Hoo)', instruction: 'Produce a deep, guttural "HOOO" sound, feeling it in your stomach.', benefit: 'Aids digestion and transforms worry into centered confidence.', category: 'healing', resonates: 'Spleen & Stomach', referenceHz: 741 },
-  { id: 'xi', label: 'Total Integration', sound: 'XI (Shee)', instruction: 'Exhale with a high-pitched "SHEEE" sound, moving energy down the body.', benefit: 'Coordinates the "Triple Burner" systems for total body harmony.', category: 'healing', resonates: 'Whole Torso', referenceHz: 852 },
+  { id: 'si', label: 'Six Sounds: Si', sound: 'SI (Sss)', instruction: 'Exhale with a controlled "SSSS" sound. Keep the tone soft enough that the breath stays even.', benefit: 'A Liu Zi Jue / Six Healing Sounds practice traditionally associated with the lungs.', category: 'healing', resonates: 'Chest', referenceHz: 220 },
+  { id: 'chui', label: 'Six Sounds: Chui', sound: 'CHUI', instruction: 'Exhale with a soft "CHWAY" or "CHWEE" sound, like gently blowing through the lips.', benefit: 'A traditional Six Healing Sounds exhale associated with the kidneys.', category: 'healing', resonates: 'Lower Back & Belly', referenceHz: 196 },
+  { id: 'xu', label: 'Six Sounds: Xu', sound: 'XU (Shu)', instruction: 'Make a gentle "SHOO" sound on the exhale. Let the ribs soften as the sound fades.', benefit: 'A traditional Six Healing Sounds exhale associated with the liver.', category: 'healing', resonates: 'Ribs & Side Body', referenceHz: 174.6 },
+  { id: 'he', label: 'Six Sounds: He', sound: 'HE (Huh)', instruction: 'Exhale with a warm "HUH" or soft "HER" sound from an open throat.', benefit: 'A traditional Six Healing Sounds exhale associated with the heart.', category: 'healing', resonates: 'Chest', referenceHz: 220 },
+  { id: 'hu', label: 'Six Sounds: Hu', sound: 'HU (Hoo)', instruction: 'Produce a rounded "HOO" sound, keeping the belly relaxed as you exhale.', benefit: 'A traditional Six Healing Sounds exhale associated with the spleen/stomach system.', category: 'healing', resonates: 'Upper Belly', referenceHz: 196 },
+  { id: 'xi', label: 'Six Sounds: Xi', sound: 'XI (Shee)', instruction: 'Exhale with a light "SHEE" sound. Use a clear but relaxed pitch.', benefit: 'A traditional Six Healing Sounds exhale associated with whole-body regulation.', category: 'healing', resonates: 'Torso', referenceHz: 261.6 },
 
   // Bija Mantras
-  { id: 'lam', label: 'Root Foundation', sound: 'LAM', instruction: 'Chant a deep, resonant "LA-MNG", focusing on the base of your spine.', benefit: 'Establishes a sense of absolute security and physical stability.', category: 'bija', resonates: 'Base of Spine', referenceHz: 256 },
-  { id: 'vam', label: 'Sacral Flow', sound: 'VAM', instruction: 'Chant "VA-MNG", feeling the vibration in your lower pelvis.', benefit: 'Clears emotional blocks and enhances creative and vital energy.', category: 'bija', resonates: 'Pelvic Area', referenceHz: 288 },
-  { id: 'ram', label: 'Solar Power', sound: 'RAM', instruction: 'Chant a vibrant "RA-MNG", focusing on your solar plexus.', benefit: 'Ignites personal power, willpower, and digestive fire.', category: 'bija', resonates: 'Navel', referenceHz: 320 },
-  { id: 'yam', label: 'Heart Compassion', sound: 'YAM', instruction: 'Chant a soft, airy "YA-MNG" from the center of your chest.', benefit: 'Opens the heart to unconditional self-love and empathy for others.', category: 'bija', resonates: 'Heart Center', referenceHz: 341.3 },
-  { id: 'ham', label: 'Throat Expression', sound: 'HAM', instruction: 'Chant "HA-MNG", letting the vibration clear your throat.', benefit: 'Enhances communication and helps you speak your authentic truth.', category: 'bija', resonates: 'Throat & Neck', referenceHz: 384 },
+  { id: 'lam', label: 'Root Bija', sound: 'LAM', instruction: 'Chant "LAM" as "LA-MNG," ending with a comfortable nasal hum.', benefit: 'A traditional root-chakra bija used as a grounding meditation focus.', category: 'bija', resonates: 'Lower Body', referenceHz: 256 },
+  { id: 'vam', label: 'Sacral Bija', sound: 'VAM', instruction: 'Chant "VAM" as "VA-MNG," keeping the vowel open and the hum easy.', benefit: 'A traditional sacral-chakra bija used for breath, attention, and resonance practice.', category: 'bija', resonates: 'Pelvic Area', referenceHz: 288 },
+  { id: 'ram', label: 'Solar Bija', sound: 'RAM', instruction: 'Chant "RAM" as "RA-MNG," letting the sound stay bright but relaxed.', benefit: 'A traditional solar-plexus bija used as a focused meditation sound.', category: 'bija', resonates: 'Upper Belly', referenceHz: 320 },
+  { id: 'yam', label: 'Heart Bija', sound: 'YAM', instruction: 'Chant "YAM" as "YA-MNG" with a soft, open vowel.', benefit: 'A traditional heart-chakra bija used for contemplative breath and sound practice.', category: 'bija', resonates: 'Chest', referenceHz: 341.3 },
+  { id: 'ham', label: 'Throat Bija', sound: 'HAM', instruction: 'Chant "HAM" as "HA-MNG," keeping the throat open and unstrained.', benefit: 'A traditional throat-chakra bija used to focus attention on voice and resonance.', category: 'bija', resonates: 'Throat & Neck', referenceHz: 384 },
 
   // Vowel Resonances
-  { id: 'eee', label: 'Mental Focus', sound: 'EEE', instruction: 'Sustain a high-pitched "EEEE" sound, focusing on your third eye.', benefit: 'Pierces through brain fog to bring sharp mental focus and insight.', category: 'vowel', resonates: 'Head', referenceHz: 480 },
-  { id: 'aaa', label: 'Heart Opening', sound: 'AAA', instruction: 'Release a wide, open "AHHH" sound from the chest.', benefit: 'Facilitates emotional release and a deep sense of expansion.', category: 'vowel', resonates: 'Chest', referenceHz: 341.3 },
-  { id: 'ooo', label: 'Deep Stability', sound: 'OOO', instruction: 'Sustain a slow, deep "OOOO" sound, feeling it in your core.', benefit: 'Brings immediate stability and anchors you in the present moment.', category: 'vowel', resonates: 'Abdomen', referenceHz: 256 },
-  { id: 'why', label: 'Life Cycle', sound: 'WHY', instruction: 'Enunciate "W-H-Y" very slowly, transitioning from OOO to EEE.', benefit: 'A complete respiratory tonic that oxygenates tissues and clears the mind.', category: 'vowel', resonates: 'Full Respiratory System', referenceHz: 256 },
+  { id: 'eee', label: 'Bright Vowel', sound: 'EEE', instruction: 'Sustain a clear "EEEE" sound at a pitch that feels easy, not forced.', benefit: 'A bright vowel for noticing face and head resonance.', category: 'vowel', resonates: 'Face & Head', referenceHz: 480 },
+  { id: 'aaa', label: 'Open Vowel', sound: 'AAA', instruction: 'Release a wide, open "AHHH" sound with a relaxed jaw.', benefit: 'An open vowel for practicing fuller breath and chest resonance.', category: 'vowel', resonates: 'Chest', referenceHz: 341.3 },
+  { id: 'ooo', label: 'Rounded Vowel', sound: 'OOO', instruction: 'Sustain a rounded "OOOO" sound and let the lips shape the tone.', benefit: 'A rounded vowel for lower, steadier vocal resonance.', category: 'vowel', resonates: 'Mouth & Chest', referenceHz: 256 },
+  { id: 'why', label: 'Vowel Glide', sound: 'WHY', instruction: 'Move slowly through "OOO" to "AHH" to "EEE," keeping the breath continuous.', benefit: 'A gentle vowel transition for exploring how mouth shape changes resonance.', category: 'vowel', resonates: 'Full Vocal Tract', referenceHz: 256 },
 ];
 
 const HANDPAN_NOTES = [
@@ -3104,8 +3105,8 @@ function SonicChantView({
   const filteredChants = SONIC_CHANTS.filter(c => c.category === activeCategory);
 
   const categories: { id: SonicChant['category'], label: string, icon: React.ReactNode }[] = [
-    { id: 'vagus', label: 'Vagus Nerve', icon: <Zap size={14} /> },
-    { id: 'healing', label: 'Healing Sounds', icon: <Sparkles size={14} /> },
+    { id: 'vagus', label: 'Breath & Hum', icon: <Zap size={14} /> },
+    { id: 'healing', label: 'Six Sounds', icon: <Sparkles size={14} /> },
     { id: 'bija', label: 'Bija Mantras', icon: <Wind size={14} /> },
     { id: 'vowel', label: 'Vowel Resonance', icon: <Mic size={14} /> },
   ];
@@ -3122,7 +3123,7 @@ function SonicChantView({
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Vocal Resonance Guide</span>
-              <span className="text-xl font-serif italic text-white">{selectedChant.label} Target: {selectedChant.referenceHz}Hz</span>
+              <span className="text-xl font-serif italic text-white">{selectedChant.label} Guide: {selectedChant.referenceHz}Hz</span>
             </div>
             {micPitch && (
               <div className="flex flex-col items-end">
@@ -3151,8 +3152,8 @@ function SonicChantView({
           <p className="text-[10px] text-center text-app-muted font-mono uppercase tracking-widest">
             {micPitch 
               ? (Math.abs(micPitch - selectedChant.referenceHz) < 10 
-                 ? "Perfect Resonance Found" 
-                 : "Align your pitch with the target zone")
+                 ? "Close to guide pitch" 
+                 : "Move gently toward the guide zone")
               : "Detecting Voice..."}
           </p>
         </motion.div>
@@ -3161,7 +3162,7 @@ function SonicChantView({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <h2 className="text-2xl sm:text-3xl font-serif italic">Sonic Vocalizations</h2>
-          <p className="text-xs sm:text-sm text-app-muted">Use your own voice or pre-recorded sounds to stimulate the vagus nerve.</p>
+          <p className="text-xs sm:text-sm text-app-muted">Use your own voice or pre-recorded sounds for breath pacing, humming, and resonance practice.</p>
         </div>
         
         <div className="flex flex-wrap gap-2 sm:gap-3">
@@ -3393,7 +3394,7 @@ function SonicChantView({
               <div className="flex flex-col">
                 <span className="text-xl font-mono font-bold text-app-accent">{chant.sound}</span>
                 {chant.referenceHz && (
-                  <span className="text-[10px] font-mono text-app-accent/40">{chant.referenceHz}Hz</span>
+                  <span className="text-[10px] font-mono text-app-accent/40">{chant.referenceHz}Hz guide</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -3424,7 +3425,7 @@ function SonicChantView({
                       ? "bg-app-accent text-black"
                       : "bg-white/5 text-app-muted hover:bg-white/10 hover:text-white"
                   )}
-                  title="Play Reference Tone"
+                  title="Play Guide Tone"
                 >
                   <Music size={12} />
                 </button>
@@ -3476,7 +3477,7 @@ function SonicChantView({
 
               <div className="mt-4 p-4 rounded-2xl bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex-1">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted block mb-2">Benefit</span>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted block mb-2">Practice Note</span>
                   <p className="text-xs italic text-white/80 leading-relaxed">{selectedChant.benefit}</p>
                 </div>
                 
@@ -3492,7 +3493,7 @@ function SonicChantView({
                       )}
                     >
                       {isReferencePlaying ? <Pause size={14} /> : <Volume2 size={14} />}
-                      {isReferencePlaying ? "Stop Reference" : "Play Reference"}
+                      {isReferencePlaying ? "Stop Guide" : "Play Guide"}
                     </button>
                   )}
                   <button
@@ -3606,7 +3607,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Sonic Vocalizations',
-      description: 'Using your own voice is one of the most powerful ways to stimulate the Vagus Nerve. Sounds like "VOO" create deep vibrations in the chest that signal safety to the brainstem. Bija mantras and vowel resonances target specific energy centers to ground or clear your energy.',
+      description: 'Using your own voice can support slow breathing, attention, and felt vibration. Sounds like "VOO," humming, bija mantras, and vowel tones are offered as guided resonance practices rather than fixed medical treatments.',
       icon: Mic,
       iconClassName: 'text-app-accent',
       mode: 'chants',
@@ -3748,7 +3749,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Vagal Reset" Stack</span>
-              <p className="text-[11px] text-app-muted">Activate **Healing Mode** while performing **Sonic Vocalizations**. The external binaural beats provide a reference tone that amplifies the internal vibrations of your own voice, doubling the vagal stimulation.</p>
+              <p className="text-[11px] text-app-muted">Use **Healing Mode** while performing **Sonic Vocalizations** if you like having a soft tone underneath your voice. Treat the guide tone as a steady listening anchor, not a required pitch.</p>
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Emotional Release" Stack</span>
@@ -4237,7 +4238,7 @@ function AboutView() {
           <div className="glass p-4 rounded-2xl border-white/5 flex flex-col items-center text-center gap-2">
             <Waves className="text-app-accent/60" size={16} />
             <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Frequencies</span>
-            <p className="text-[10px] leading-tight">Mathematically tuned tones to stimulate specific neural pathways.</p>
+            <p className="text-[10px] leading-tight">Tuned tones for listening, focus, and guided resonance practice.</p>
           </div>
           <div className="glass p-4 rounded-2xl border-white/5 flex flex-col items-center text-center gap-2">
             <Fingerprint className="text-app-accent/60" size={16} />
