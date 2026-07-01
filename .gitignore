@@ -1,4 +1,7 @@
 node_modules/
+.npm-cache/
+.xcode-derived-data/
+.xcode-home/
 build/
 dist/
 coverage/

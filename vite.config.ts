@@ -6,7 +6,7 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/Focus-Flow/',
+    base: env.VITE_BASE_PATH || '/Focus-Flow/',
     plugins: [react(), tailwindcss()],
     build: {
       rollupOptions: {
