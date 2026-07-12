@@ -236,6 +236,7 @@ interface UserProfile {
 
 type AppMode = 'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
+type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
 
 interface SessionIntentionPreset {
   id: SessionIntentionId;
@@ -247,6 +248,43 @@ interface SessionIntentionPreset {
   frequencyId?: Frequency['id'];
   icon: typeof Sparkles;
   iconClassName: string;
+}
+
+interface MoodSessionPreset {
+  id: MoodId;
+  label: string;
+  feeling: string;
+  sessionName: string;
+  summary: string;
+  frequencyId: Frequency['id'];
+  hapticId: HapticPattern['id'];
+  chantId?: SonicChant['id'];
+  minutes: number;
+  useSchumann: boolean;
+  healingMode: boolean;
+  colorClassName: string;
+}
+
+interface Ritual {
+  id: string;
+  name: string;
+  moodId: MoodId;
+  frequencyId: Frequency['id'];
+  hapticId: HapticPattern['id'];
+  chantId?: SonicChant['id'];
+  minutes: number;
+  useSchumann: boolean;
+  healingMode: boolean;
+  createdAt: string;
+}
+
+interface GardenEntry {
+  id: string;
+  ritualName: string;
+  moodId: MoodId;
+  minutes: number;
+  frequencyId: Frequency['id'];
+  completedAt: string;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -314,6 +352,93 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     mode: 'chants',
     icon: Wind,
     iconClassName: 'text-sky-400'
+  }
+];
+
+const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
+  {
+    id: 'anxious',
+    label: 'Anxious',
+    feeling: 'My body is loud and I need a soft landing.',
+    sessionName: 'Soft Landing Reset',
+    summary: 'Low tone, breath haptics, and a short calm path.',
+    frequencyId: '396',
+    hapticId: 'breathe',
+    chantId: 'voo',
+    minutes: 7,
+    useSchumann: true,
+    healingMode: true,
+    colorClassName: 'text-emerald-300'
+  },
+  {
+    id: 'scattered',
+    label: 'Scattered',
+    feeling: 'My attention is everywhere.',
+    sessionName: 'Gather Focus',
+    summary: '528Hz, zen pulse, and a clean focus timer.',
+    frequencyId: '528',
+    hapticId: 'zen',
+    chantId: 'hum',
+    minutes: 15,
+    useSchumann: false,
+    healingMode: false,
+    colorClassName: 'text-app-accent'
+  },
+  {
+    id: 'tired',
+    label: 'Tired',
+    feeling: 'I need energy without getting wired.',
+    sessionName: 'Gentle Lift',
+    summary: 'Bright tone, light pulse, and a restorative pace.',
+    frequencyId: '741',
+    hapticId: 'waves',
+    chantId: 'eee',
+    minutes: 10,
+    useSchumann: false,
+    healingMode: false,
+    colorClassName: 'text-sky-300'
+  },
+  {
+    id: 'tense',
+    label: 'Tense',
+    feeling: 'My shoulders and jaw are holding too much.',
+    sessionName: 'Release Tension',
+    summary: 'Slow exhale guide, heartbeat haptic, and grounding tone.',
+    frequencyId: '174',
+    hapticId: 'heartbeat',
+    chantId: 'mmm',
+    minutes: 8,
+    useSchumann: true,
+    healingMode: true,
+    colorClassName: 'text-rose-300'
+  },
+  {
+    id: 'blocked',
+    label: 'Blocked',
+    feeling: 'I want to move, create, or start again.',
+    sessionName: 'Unblock Flow',
+    summary: '417Hz, movement-friendly haptics, and an open vowel.',
+    frequencyId: '417',
+    hapticId: 'waves',
+    chantId: 'aaa',
+    minutes: 12,
+    useSchumann: false,
+    healingMode: true,
+    colorClassName: 'text-orange-300'
+  },
+  {
+    id: 'focused',
+    label: 'Ready',
+    feeling: 'I feel ready and want to protect the flow.',
+    sessionName: 'Deep Work Shield',
+    summary: '852Hz clarity, minimal haptics, and a longer work block.',
+    frequencyId: '852',
+    hapticId: 'zen',
+    chantId: 'om',
+    minutes: 25,
+    useSchumann: false,
+    healingMode: false,
+    colorClassName: 'text-indigo-300'
   }
 ];
 
@@ -619,6 +744,29 @@ export default function App() {
       ? (storedIntention as SessionIntentionId)
       : 'focus';
   });
+  const [selectedMoodId, setSelectedMoodId] = useState<MoodId>('scattered');
+  const [activeGeneratedSession, setActiveGeneratedSession] = useState<Ritual | null>(null);
+  const [ritualName, setRitualName] = useState('');
+  const [savedRituals, setSavedRituals] = useState<Ritual[]>(() => {
+    try {
+      const saved = getStoredValue('focusflow_rituals');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('Unable to load saved rituals.', error);
+      return [];
+    }
+  });
+  const [gardenEntries, setGardenEntries] = useState<GardenEntry[]>(() => {
+    try {
+      const saved = getStoredValue('focusflow_garden');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('Unable to load progress garden.', error);
+      return [];
+    }
+  });
   const [isMicActive, setIsMicActive] = useState(false);
   const [isReferencePlaying, setIsReferencePlaying] = useState(false);
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null);
@@ -680,6 +828,14 @@ export default function App() {
   useEffect(() => {
     setStoredValue('focusflow_session_intention', selectedSessionIntention);
   }, [selectedSessionIntention]);
+
+  useEffect(() => {
+    setStoredValue('focusflow_rituals', JSON.stringify(savedRituals.slice(0, 12)));
+  }, [savedRituals]);
+
+  useEffect(() => {
+    setStoredValue('focusflow_garden', JSON.stringify(gardenEntries.slice(0, 60)));
+  }, [gardenEntries]);
   
   useEffect(() => {
     if ((!isMicActive && !isAudioPlaying && activeReferenceId === null && !isPlaying) || !analyzer.current) {
@@ -939,7 +1095,7 @@ export default function App() {
     setActiveReferenceId(null);
   }, []);
 
-  const playFrequency = useCallback((freq: Frequency) => {
+  const playFrequency = useCallback((freq: Frequency, options?: { healingMode?: boolean; schumannActive?: boolean }) => {
     const ctx = initAudio();
     if (!ctx) return;
 
@@ -952,6 +1108,8 @@ export default function App() {
     }
 
     const now = ctx.currentTime;
+    const healingEnabled = options?.healingMode ?? isHealingMode;
+    const schumannEnabled = options?.schumannActive ?? isSchumannActive;
 
     // Update Media Session
     if (hasMediaSessionSupport() && typeof MediaMetadata !== 'undefined') {
@@ -974,7 +1132,7 @@ export default function App() {
     const osc2 = ctx.createOscillator();
     osc2.type = 'sine';
 
-    if (isHealingMode) {
+    if (healingEnabled) {
       // Center the binaural beat (6Hz) around the target frequency
       // This ensures the perceived pitch is EXACTLY the Solfeggio frequency
       osc1.frequency.setValueAtTime(freq.hz - 3, now);
@@ -999,7 +1157,7 @@ export default function App() {
     }
 
     // 8D Spatial Animation
-    if (isHealingMode && pannerNode.current) {
+    if (healingEnabled && pannerNode.current) {
       let angle = 0;
       spatialInterval.current = window.setInterval(() => {
         if (pannerNode.current) {
@@ -1041,7 +1199,7 @@ export default function App() {
     gainNode.current!.gain.linearRampToValueAtTime(0.8, now + 0.2);
     
     // Schumann Resonance (7.83Hz Grounding)
-    if (isSchumannActive) {
+    if (schumannEnabled) {
       const sOsc = ctx.createOscillator();
       sOsc.type = 'sine';
       sOsc.frequency.setValueAtTime(7.83, now);
@@ -1056,7 +1214,7 @@ export default function App() {
     oscillator.current = osc1;
     setActiveFreq(freq);
     setIsPlaying(true);
-  }, [initAudio, volume, isMuted, stopFrequency, isHealingMode, isSchumannActive]);
+  }, [initAudio, stopFrequency, isHealingMode, isSchumannActive]);
 
   const launchSessionIntention = useCallback((intentionId: SessionIntentionId) => {
     const preset = SESSION_INTENTION_PRESETS.find((entry) => entry.id === intentionId);
@@ -1638,6 +1796,93 @@ export default function App() {
     }
   }, [isDroneActive, selectedChant, initAudio]);
 
+  const applyRitual = useCallback((ritual: Ritual) => {
+    const frequency = SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === ritual.frequencyId) ?? SOLFEGGIO_FREQUENCIES[0];
+    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === ritual.hapticId);
+    const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
+
+    setMode('frequencies');
+    setSelectedMoodId(ritual.moodId);
+    setUserProfile((profile) => ({
+      ...profile,
+      focusMinutes: ritual.minutes,
+      preferredFrequencyId: ritual.frequencyId,
+      preferredHapticId: ritual.hapticId,
+      useSchumann: ritual.useSchumann,
+      showVisualizer: true
+    }));
+    setIsHealingMode(ritual.healingMode);
+    setIsSchumannActive(ritual.useSchumann);
+    setIsVisualizerActive(true);
+    setSelectedChant(chant ?? null);
+    setActiveGeneratedSession(ritual);
+    playFrequency(frequency, { healingMode: ritual.healingMode, schumannActive: ritual.useSchumann });
+    if (haptic) playHaptic(haptic);
+    triggerHaptic([20, 40, 20]);
+  }, [playFrequency, playHaptic, triggerHaptic]);
+
+  const launchMoodSession = useCallback((moodId: MoodId) => {
+    const preset = MOOD_SESSION_PRESETS.find((entry) => entry.id === moodId) ?? MOOD_SESSION_PRESETS[0];
+    const ritual: Ritual = {
+      id: `session-${Date.now()}`,
+      name: preset.sessionName,
+      moodId: preset.id,
+      frequencyId: preset.frequencyId,
+      hapticId: preset.hapticId,
+      chantId: preset.chantId,
+      minutes: preset.minutes,
+      useSchumann: preset.useSchumann,
+      healingMode: preset.healingMode,
+      createdAt: new Date().toISOString()
+    };
+
+    setRitualName(preset.sessionName);
+    applyRitual(ritual);
+  }, [applyRitual]);
+
+  const saveCurrentRitual = useCallback(() => {
+    const preset = MOOD_SESSION_PRESETS.find((entry) => entry.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
+    const frequencyId = activeFreq?.id ?? preset.frequencyId;
+    const hapticId = activeHaptic?.id ?? userProfile.preferredHapticId ?? preset.hapticId;
+    const name = ritualName.trim() || activeGeneratedSession?.name || `${preset.label} Ritual`;
+
+    const ritual: Ritual = {
+      id: `ritual-${Date.now()}`,
+      name,
+      moodId: selectedMoodId,
+      frequencyId,
+      hapticId,
+      chantId: selectedChant?.id ?? preset.chantId,
+      minutes: userProfile.focusMinutes || preset.minutes,
+      useSchumann: isSchumannActive,
+      healingMode: isHealingMode,
+      createdAt: new Date().toISOString()
+    };
+
+    setSavedRituals((current) => [ritual, ...current.filter((entry) => entry.name.toLowerCase() !== name.toLowerCase())].slice(0, 12));
+    setActiveGeneratedSession(ritual);
+    setRitualName(name);
+    triggerHaptic([30, 50, 30]);
+  }, [activeFreq, activeGeneratedSession, activeHaptic, isHealingMode, isSchumannActive, ritualName, selectedChant, selectedMoodId, triggerHaptic, userProfile.focusMinutes, userProfile.preferredHapticId]);
+
+  const completeGardenSession = useCallback(() => {
+    const session = activeGeneratedSession;
+    if (!session) return;
+
+    const entry: GardenEntry = {
+      id: `garden-${Date.now()}`,
+      ritualName: session.name,
+      moodId: session.moodId,
+      minutes: session.minutes,
+      frequencyId: session.frequencyId,
+      completedAt: new Date().toISOString()
+    };
+
+    setGardenEntries((current) => [entry, ...current].slice(0, 60));
+    setActiveGeneratedSession(null);
+    triggerHaptic([60, 30, 60]);
+  }, [activeGeneratedSession, triggerHaptic]);
+
   const stopAll = useCallback(() => {
     stopFrequency();
     stopHaptic();
@@ -2071,6 +2316,21 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
+                  <PracticeHub
+                    selectedMoodId={selectedMoodId}
+                    onSelectMood={setSelectedMoodId}
+                    onLaunchMoodSession={launchMoodSession}
+                    activeGeneratedSession={activeGeneratedSession}
+                    ritualName={ritualName}
+                    onRitualNameChange={setRitualName}
+                    onSaveRitual={saveCurrentRitual}
+                    savedRituals={savedRituals}
+                    onLaunchRitual={applyRitual}
+                    onDeleteRitual={(ritualId) => setSavedRituals((current) => current.filter((ritual) => ritual.id !== ritualId))}
+                    gardenEntries={gardenEntries}
+                    onCompleteSession={completeGardenSession}
+                  />
+
                   {showStartHere && (
                     <div className="mb-8 p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-white/6 to-app-accent/5 border border-white/10">
                       <div className="flex items-start justify-between gap-4 mb-5">
@@ -2501,6 +2761,224 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
         active ? "opacity-100" : "opacity-60"
       )}>{label}</span>
     </button>
+  );
+}
+
+function PracticeHub({
+  selectedMoodId,
+  onSelectMood,
+  onLaunchMoodSession,
+  activeGeneratedSession,
+  ritualName,
+  onRitualNameChange,
+  onSaveRitual,
+  savedRituals,
+  onLaunchRitual,
+  onDeleteRitual,
+  gardenEntries,
+  onCompleteSession
+}: {
+  selectedMoodId: MoodId,
+  onSelectMood: (moodId: MoodId) => void,
+  onLaunchMoodSession: (moodId: MoodId) => void,
+  activeGeneratedSession: Ritual | null,
+  ritualName: string,
+  onRitualNameChange: (name: string) => void,
+  onSaveRitual: () => void,
+  savedRituals: Ritual[],
+  onLaunchRitual: (ritual: Ritual) => void,
+  onDeleteRitual: (ritualId: string) => void,
+  gardenEntries: GardenEntry[],
+  onCompleteSession: () => void
+}) {
+  const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
+  const totalMinutes = gardenEntries.reduce((sum, entry) => sum + entry.minutes, 0);
+  const lastSevenEntries = gardenEntries.slice(0, 7);
+
+  const describeRitual = (ritual: Pick<Ritual, 'frequencyId' | 'hapticId' | 'minutes' | 'chantId'>) => {
+    const frequency = SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === ritual.frequencyId);
+    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === ritual.hapticId);
+    const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
+
+    return [
+      frequency ? `${frequency.hz}Hz` : null,
+      haptic?.label,
+      chant?.sound,
+      `${ritual.minutes} min`
+    ].filter(Boolean).join(' / ');
+  };
+
+  return (
+    <section className="mb-8 grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-4">
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-app-accent/10 via-white/[0.04] to-white/[0.02] border border-app-accent/20">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+          <div>
+            <div className="flex items-center gap-2 text-app-accent mb-2">
+              <Sparkles size={16} />
+              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Mood-to-Session Generator</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-serif italic">What does your system need?</h2>
+            <p className="text-xs sm:text-sm text-app-muted leading-relaxed mt-2 max-w-2xl">
+              Pick a state and Focus Flow builds a tone, haptic, chant guide, and timer length around it.
+            </p>
+          </div>
+
+          <button
+            onClick={() => onLaunchMoodSession(selectedMood.id)}
+            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all"
+          >
+            <Play size={14} fill="currentColor" />
+            Generate Session
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
+          {MOOD_SESSION_PRESETS.map((mood) => (
+            <button
+              key={mood.id}
+              onClick={() => onSelectMood(mood.id)}
+              className={cn(
+                "min-h-[104px] text-left p-3 rounded-2xl border transition-all",
+                selectedMoodId === mood.id
+                  ? "bg-app-accent text-black border-app-accent"
+                  : "bg-black/20 border-white/10 text-white hover:bg-white/8"
+              )}
+            >
+              <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", selectedMoodId === mood.id ? "text-black" : mood.colorClassName)}>
+                {mood.label}
+              </span>
+              <p className={cn("text-[10px] leading-tight mt-2", selectedMoodId === mood.id ? "text-black/70" : "text-app-muted")}>
+                {mood.feeling}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+          <div className="p-4 rounded-2xl bg-black/30 border border-white/10">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Generated Path</p>
+                <h3 className="text-xl font-serif italic mt-1">{selectedMood.sessionName}</h3>
+              </div>
+              <span className="px-2 py-1 rounded-full bg-white/5 text-[9px] font-mono uppercase tracking-widest text-app-muted">
+                {selectedMood.minutes} min
+              </span>
+            </div>
+            <p className="text-sm text-white/75 leading-relaxed mt-3">{selectedMood.summary}</p>
+            <p className="text-[10px] text-app-muted font-mono uppercase tracking-widest mt-4">
+              {describeRitual(selectedMood)}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Studio</p>
+              <h3 className="text-lg font-serif italic">Save the mix</h3>
+            </div>
+            <input
+              value={ritualName}
+              onChange={(event) => onRitualNameChange(event.target.value)}
+              placeholder={activeGeneratedSession?.name || `${selectedMood.label} Ritual`}
+              className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-app-accent/50"
+            />
+            <button
+              onClick={onSaveRitual}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/15 transition-colors font-mono text-[10px] uppercase tracking-widest"
+            >
+              <Save size={13} />
+              Save Ritual
+            </button>
+            {activeGeneratedSession && (
+              <button
+                onClick={onCompleteSession}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-400 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold"
+              >
+                <CheckCircle2 size={13} />
+                Complete + Bloom
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="p-4 rounded-3xl bg-white/[0.035] border border-white/10">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Library</p>
+              <h3 className="text-xl font-serif italic">Saved flows</h3>
+            </div>
+            <span className="text-[10px] font-mono text-app-accent">{savedRituals.length}/12</span>
+          </div>
+
+          {savedRituals.length === 0 ? (
+            <p className="text-xs text-app-muted leading-relaxed p-4 rounded-2xl bg-black/20 border border-white/5">
+              Save a generated or current mix to make it replayable in one tap.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+              {savedRituals.map((ritual) => (
+                <div key={ritual.id} className="flex items-center gap-2 p-3 rounded-2xl bg-black/20 border border-white/5">
+                  <button
+                    onClick={() => onLaunchRitual(ritual)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <p className="truncate text-sm font-medium">{ritual.name}</p>
+                    <p className="truncate text-[9px] font-mono uppercase tracking-widest text-app-muted mt-1">{describeRitual(ritual)}</p>
+                  </button>
+                  <button
+                    onClick={() => onDeleteRitual(ritual.id)}
+                    className="p-2 rounded-xl text-app-muted hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                    title="Delete ritual"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-400/10 to-white/[0.03] border border-emerald-400/15">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-300">Progress Garden</p>
+              <h3 className="text-xl font-serif italic">Your blooms</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-mono text-emerald-300">{gardenEntries.length}</p>
+              <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">{totalMinutes} min</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2 mb-3">
+            {Array.from({ length: 7 }).map((_, index) => {
+              const entry = lastSevenEntries[index];
+              const mood = entry ? MOOD_SESSION_PRESETS.find((item) => item.id === entry.moodId) : null;
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "aspect-square rounded-full border flex items-center justify-center text-[10px] font-mono transition-all",
+                    entry
+                      ? "bg-emerald-300 text-black border-emerald-200 shadow-[0_0_18px_rgba(110,231,183,0.25)]"
+                      : "bg-black/20 border-white/10 text-white/20"
+                  )}
+                  title={entry ? `${entry.ritualName} / ${entry.minutes} min` : 'Empty garden space'}
+                >
+                  {entry ? (mood?.label[0] ?? '*') : ''}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[10px] text-app-muted leading-relaxed">
+            Complete generated sessions to grow a visible trail of practice. Each bloom records the ritual, mood, minutes, and tone.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
