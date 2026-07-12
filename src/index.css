@@ -6,11 +6,12 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --font-serif: "Playfair Display", serif;
 
-  --color-app-bg: #0a0a0a;
-  --color-app-card: #151619;
-  --color-app-accent: #00ff9d; /* Neon mint for mental clarity */
+  --color-app-bg: #05070a;
+  --color-app-card: #11151b;
+  --color-app-accent: #6ee7b7;
+  --color-app-gold: #f7d78a;
   --color-app-text: #ffffff;
-  --color-app-muted: #8e9299;
+  --color-app-muted: #a0a7b4;
 
   --breakpoint-xs: 400px;
 }
@@ -24,17 +25,81 @@
 @layer base {
   body {
     @apply bg-app-bg text-app-text font-sans antialiased;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(110, 231, 183, 0.16), transparent 34%),
+      radial-gradient(circle at 88% 10%, rgba(125, 92, 255, 0.13), transparent 30%),
+      radial-gradient(circle at 50% 100%, rgba(247, 215, 138, 0.08), transparent 34%),
+      linear-gradient(135deg, #05070a 0%, #0a0f14 44%, #05060a 100%);
   }
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
 }
 
 .neon-glow {
-  box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+  box-shadow: 0 0 26px rgba(110, 231, 183, 0.22);
+}
+
+.premium-shell {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
+    linear-gradient(180deg, rgba(110, 231, 183, 0.045), transparent 44%);
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.premium-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
+    radial-gradient(circle at 20% 0%, rgba(110, 231, 183, 0.08), transparent 42%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 50px rgba(0, 0, 0, 0.22);
+}
+
+.premium-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.16), transparent 18%, transparent 78%, rgba(247, 215, 138, 0.08));
+  opacity: 0.55;
+}
+
+.premium-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(110, 231, 183, 0.42), rgba(247, 215, 138, 0.32), transparent);
+}
+
+.ambient-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 35%, black, transparent 72%);
+}
+
+.brand-mark {
+  background:
+    conic-gradient(from 180deg, #6ee7b7, #f7d78a, #8b7cff, #6ee7b7);
+  box-shadow: 0 0 34px rgba(110, 231, 183, 0.24), inset 0 0 22px rgba(0, 0, 0, 0.2);
+}
+
+.garden-bloom {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.95) 0 8%, transparent 9%),
+    conic-gradient(from 24deg, #6ee7b7, #f7d78a, #8b7cff, #7dd3fc, #6ee7b7);
+  box-shadow: 0 0 22px rgba(110, 231, 183, 0.34), inset 0 0 14px rgba(0, 0, 0, 0.28);
+}
+
+.premium-button {
+  box-shadow: 0 14px 34px rgba(110, 231, 183, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .tapping-pulse {

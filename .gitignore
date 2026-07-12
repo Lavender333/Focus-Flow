@@ -1,5 +1,7 @@
 node_modules/
 .npm-cache/
+.swift-cache/
+.swift-temp/
 .xcode-derived-data/
 .xcode-home/
 build/

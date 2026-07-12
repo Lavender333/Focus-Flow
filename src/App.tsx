@@ -1983,27 +1983,34 @@ export default function App() {
   }, [initAudio]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative bg-black">
+    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative">
       {/* Background Atmosphere */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 ambient-grid opacity-60" />
         <div 
-          className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-20 transition-colors duration-1000"
+          className="absolute top-[-12%] left-[-8%] w-[42%] h-[42%] rounded-full blur-[140px] opacity-25 transition-colors duration-1000"
           style={{ backgroundColor: activeFreq?.color || '#00ff9d' }}
         />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[8%] right-[-8%] w-[28%] h-[28%] bg-violet-500/15 rounded-full blur-[110px]" />
+        <div className="absolute bottom-[-12%] right-[18%] w-[34%] h-[34%] bg-amber-300/10 rounded-full blur-[130px]" />
       </div>
 
       {/* Main Container */}
       <main className={cn(
-        "glass rounded-[32px] shadow-2xl overflow-hidden flex flex-row transition-all duration-700 relative",
-        isZenMode ? "w-screen h-screen rounded-none fixed inset-0 z-50" : "w-full max-w-4xl h-[95vh] sm:h-[90vh] md:h-[700px] max-h-[900px]"
+        "glass premium-shell rounded-[36px] overflow-hidden flex flex-row transition-all duration-700 relative",
+        isZenMode ? "w-screen h-screen rounded-none fixed inset-0 z-50" : "w-full max-w-7xl h-[95vh] sm:h-[90vh] md:h-[820px] max-h-[960px]"
       )}>
         
         {/* Sidebar Navigation */}
         <nav className={cn(
-          "w-[86px] sm:w-20 bg-black/40 border-r border-white/5 flex flex-col items-center justify-start gap-2 sm:gap-4 p-2 sm:p-4 transition-all duration-500 overflow-y-auto overflow-x-visible no-scrollbar shrink-0",
+          "w-[86px] sm:w-20 bg-black/35 border-r border-white/10 flex flex-col items-center justify-start gap-2 sm:gap-4 p-2 sm:p-4 transition-all duration-500 overflow-y-auto overflow-x-visible no-scrollbar shrink-0",
           isZenMode && "opacity-0 pointer-events-none -translate-x-20"
         )}>
+          <div className="w-11 h-11 rounded-2xl brand-mark p-[1px] mb-1 shrink-0">
+            <div className="w-full h-full rounded-2xl bg-black/70 flex items-center justify-center">
+              <Sparkles size={18} className="text-app-accent" />
+            </div>
+          </div>
           <NavButton 
             active={mode === 'frequencies'} 
             onClick={() => setMode('frequencies')} 
@@ -2810,14 +2817,14 @@ function PracticeHub({
 
   return (
     <section className="mb-8 grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-4">
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-app-accent/10 via-white/[0.04] to-white/[0.02] border border-app-accent/20">
+      <div className="premium-card p-4 sm:p-5 rounded-[32px]">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
-          <div>
+          <div className="relative z-10">
             <div className="flex items-center gap-2 text-app-accent mb-2">
               <Sparkles size={16} />
               <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Mood-to-Session Generator</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-serif italic">What does your system need?</h2>
+            <h2 className="text-2xl sm:text-4xl font-serif italic">What does your system need?</h2>
             <p className="text-xs sm:text-sm text-app-muted leading-relaxed mt-2 max-w-2xl">
               Pick a state and Focus Flow builds a tone, haptic, chant guide, and timer length around it.
             </p>
@@ -2825,25 +2832,29 @@ function PracticeHub({
 
           <button
             onClick={() => onLaunchMoodSession(selectedMood.id)}
-            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all"
+            className="relative z-10 shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
           >
             <Play size={14} fill="currentColor" />
             Generate Session
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
+        <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
           {MOOD_SESSION_PRESETS.map((mood) => (
             <button
               key={mood.id}
               onClick={() => onSelectMood(mood.id)}
               className={cn(
-                "min-h-[104px] text-left p-3 rounded-2xl border transition-all",
+                "min-h-[112px] text-left p-3 rounded-2xl border transition-all relative overflow-hidden",
                 selectedMoodId === mood.id
-                  ? "bg-app-accent text-black border-app-accent"
-                  : "bg-black/20 border-white/10 text-white hover:bg-white/8"
+                  ? "bg-app-accent text-black border-app-accent shadow-[0_18px_34px_rgba(110,231,183,0.18)]"
+                  : "bg-black/25 border-white/10 text-white hover:bg-white/8 hover:border-white/20"
               )}
             >
+              <div className={cn(
+                "absolute right-3 top-3 w-8 h-8 rounded-full border transition-opacity",
+                selectedMoodId === mood.id ? "border-black/20 bg-black/10" : "border-white/10 bg-white/5"
+              )} />
               <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", selectedMoodId === mood.id ? "text-black" : mood.colorClassName)}>
                 {mood.label}
               </span>
@@ -2854,8 +2865,9 @@ function PracticeHub({
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
-          <div className="p-4 rounded-2xl bg-black/30 border border-white/10">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+          <div className="p-4 rounded-2xl bg-black/35 border border-white/10 relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-app-accent/10 blur-2xl" />
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Generated Path</p>
@@ -2869,9 +2881,24 @@ function PracticeHub({
             <p className="text-[10px] text-app-muted font-mono uppercase tracking-widest mt-4">
               {describeRitual(selectedMood)}
             </p>
+            <div className="premium-divider mt-4" />
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Tone</p>
+                <p className="text-xs text-white mt-1">{SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === selectedMood.frequencyId)?.hz}Hz</p>
+              </div>
+              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Pulse</p>
+                <p className="text-xs text-white mt-1 truncate">{HAPTIC_PATTERNS.find((entry) => entry.id === selectedMood.hapticId)?.label}</p>
+              </div>
+              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Guide</p>
+                <p className="text-xs text-white mt-1">{selectedMood.chantId ? SONIC_CHANTS.find((entry) => entry.id === selectedMood.chantId)?.sound : 'Silent'}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+          <div className="p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Studio</p>
               <h3 className="text-lg font-serif italic">Save the mix</h3>
@@ -2892,7 +2919,7 @@ function PracticeHub({
             {activeGeneratedSession && (
               <button
                 onClick={onCompleteSession}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-400 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-300 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
               >
                 <CheckCircle2 size={13} />
                 Complete + Bloom
@@ -2903,7 +2930,7 @@ function PracticeHub({
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        <div className="p-4 rounded-3xl bg-white/[0.035] border border-white/10">
+        <div className="premium-card p-4 rounded-[28px]">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Library</p>
@@ -2940,7 +2967,7 @@ function PracticeHub({
           )}
         </div>
 
-        <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-400/10 to-white/[0.03] border border-emerald-400/15">
+        <div className="premium-card p-4 rounded-[28px]">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-300">Progress Garden</p>
@@ -2960,9 +2987,9 @@ function PracticeHub({
                 <div
                   key={index}
                   className={cn(
-                    "aspect-square rounded-full border flex items-center justify-center text-[10px] font-mono transition-all",
+                    "aspect-square rounded-full border flex items-center justify-center text-[10px] font-mono transition-all relative",
                     entry
-                      ? "bg-emerald-300 text-black border-emerald-200 shadow-[0_0_18px_rgba(110,231,183,0.25)]"
+                      ? "garden-bloom text-black border-emerald-200"
                       : "bg-black/20 border-white/10 text-white/20"
                   )}
                   title={entry ? `${entry.ritualName} / ${entry.minutes} min` : 'Empty garden space'}
