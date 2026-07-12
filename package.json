@@ -11,7 +11,8 @@
     "open:ios": "npm run sync:ios && npx cap open ios",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "audit:frequencies": "node scripts/audit_frequencies.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.1",

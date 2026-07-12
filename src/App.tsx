@@ -80,16 +80,21 @@ interface Frequency {
   chakra?: string;
 }
 
+const TUNING_STANDARD = 'A4 = 440Hz equal temperament';
+const SCHUMANN_RESONANCE_HZ = 7.83;
+
+// Commonly used modern Solfeggio/wellness tone set. These are intentional
+// standalone tone frequencies, not equal-temperament note names.
 const SOLFEGGIO_FREQUENCIES: Frequency[] = [
-  { id: '174', hz: 174, label: 'Relief', description: 'Pain & Stress Reduction', color: '#ef4444', secondaryColor: '#7f1d1d', chakra: 'Root (Muladhara)' },
-  { id: '285', hz: 285, label: 'Heal', description: 'Tissue & Energy Repair', color: '#f97316', secondaryColor: '#7c2d12', chakra: 'Root/Sacral' },
-  { id: '396', hz: 396, label: 'Liberate', description: 'Releasing Guilt & Fear', color: '#dc2626', secondaryColor: '#450a0a', chakra: 'Root (Muladhara)' },
-  { id: '417', hz: 417, label: 'Change', description: 'Facilitating Transformation', color: '#fb923c', secondaryColor: '#7c2d12', chakra: 'Sacral (Svadhisthana)' },
-  { id: '528', hz: 528, label: 'Focus', description: 'DNA Repair & Clarity', color: '#facc15', secondaryColor: '#713f12', chakra: 'Solar Plexus (Manipura)' },
-  { id: '639', hz: 639, label: 'Connect', description: 'Harmonizing Relationships', color: '#22c55e', secondaryColor: '#064e3b', chakra: 'Heart (Anahata)' },
-  { id: '741', hz: 741, label: 'Awaken', description: 'Intuition & Expression', color: '#0ea5e9', secondaryColor: '#0c4a6e', chakra: 'Throat (Vishuddha)' },
-  { id: '852', hz: 852, label: 'Spiritual', description: 'Returning to Order', color: '#6366f1', secondaryColor: '#312e81', chakra: 'Third Eye (Ajna)' },
-  { id: '963', hz: 963, label: 'Divine', description: 'Higher Consciousness', color: '#a855f7', secondaryColor: '#581c87', chakra: 'Crown (Sahasrara)' },
+  { id: '174', hz: 174, label: 'Relief', description: 'Low grounding tone for rest and decompression', color: '#ef4444', secondaryColor: '#7f1d1d', chakra: 'Root (Muladhara)' },
+  { id: '285', hz: 285, label: 'Restore', description: 'Gentle restorative tone for body awareness', color: '#f97316', secondaryColor: '#7c2d12', chakra: 'Root/Sacral' },
+  { id: '396', hz: 396, label: 'Release', description: 'Grounding tone commonly used for fear-release intention', color: '#dc2626', secondaryColor: '#450a0a', chakra: 'Root (Muladhara)' },
+  { id: '417', hz: 417, label: 'Shift', description: 'Transition tone commonly used for change intention', color: '#fb923c', secondaryColor: '#7c2d12', chakra: 'Sacral (Svadhisthana)' },
+  { id: '528', hz: 528, label: 'Focus', description: 'Bright tone commonly used for clarity intention', color: '#facc15', secondaryColor: '#713f12', chakra: 'Solar Plexus (Manipura)' },
+  { id: '639', hz: 639, label: 'Connect', description: 'Warm tone commonly used for connection intention', color: '#22c55e', secondaryColor: '#064e3b', chakra: 'Heart (Anahata)' },
+  { id: '741', hz: 741, label: 'Clear', description: 'Clear tone commonly used for expression intention', color: '#0ea5e9', secondaryColor: '#0c4a6e', chakra: 'Throat (Vishuddha)' },
+  { id: '852', hz: 852, label: 'Insight', description: 'High tone commonly used for insight intention', color: '#6366f1', secondaryColor: '#312e81', chakra: 'Third Eye (Ajna)' },
+  { id: '963', hz: 963, label: 'Stillness', description: 'Highest tone in the common set for spacious listening', color: '#a855f7', secondaryColor: '#581c87', chakra: 'Crown (Sahasrara)' },
 ];
 
 const REIKI_SYMBOLS = [
@@ -165,20 +170,20 @@ const SONIC_CHANTS: SonicChant[] = [
   // Guide pitches are practice anchors only; these traditions do not prescribe one universal Hz value.
   // Vagus Nerve
   { id: 'voo', label: 'Low Exhale', sound: 'VOO', instruction: 'Inhale gently, then release a low, steady "VOOO" on a long exhale. Let the pitch sit where it feels comfortable.', benefit: 'Encourages slower breathing, longer exhalation, and body awareness.', category: 'vagus', resonates: 'Chest & Abdomen', referenceHz: 98 },
-  { id: 'mom', label: 'Soft Hum', sound: 'MOM', instruction: 'Gently repeat "MOM-MOM-MOM" with an easy hum. Keep the jaw loose and the sound unforced.', benefit: 'Uses rhythmic humming as a simple, soothing vocal anchor.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.8 },
+  { id: 'mom', label: 'Soft Hum', sound: 'MOM', instruction: 'Gently repeat "MOM-MOM-MOM" with an easy hum. Keep the jaw loose and the sound unforced.', benefit: 'Uses rhythmic humming as a simple, soothing vocal anchor.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.81 },
   { id: 'err', label: 'Grounding Tone', sound: 'ERR', instruction: 'Produce a low, steady "ERRR" sound and keep the breath smooth rather than loud.', benefit: 'Offers a low-pitched focus point for grounding and steady breathing.', category: 'vagus', resonates: 'Lower Chest', referenceHz: 98 },
-  { id: 'hum', label: 'Resonant Hum', sound: 'Humming', instruction: 'Close your lips and hum softly, noticing vibration around the lips, nose, and face.', benefit: 'Supports relaxed breathing and nasal/facial resonance without needing volume.', category: 'vagus', resonates: 'Face & Sinuses', referenceHz: 130.8 },
+  { id: 'hum', label: 'Resonant Hum', sound: 'Humming', instruction: 'Close your lips and hum softly, noticing vibration around the lips, nose, and face.', benefit: 'Supports relaxed breathing and nasal/facial resonance without needing volume.', category: 'vagus', resonates: 'Face & Sinuses', referenceHz: 130.81 },
   { id: 'om', label: 'A-U-M Practice', sound: 'OM', instruction: 'Chant "A-U-M" slowly, moving from an open vowel into a closed-mouth hum.', benefit: 'A traditional meditation sound used for attention, breath pacing, and resonance.', category: 'vagus', resonates: 'Chest, Throat & Head', referenceHz: 136.1 },
-  { id: 'mmm', label: 'Closed Hum', sound: 'MMM', instruction: 'Sustain a gentle "MMM" sound with lips closed and shoulders relaxed.', benefit: 'Gives the breath a quiet, steady tone for calming attention.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.8 },
+  { id: 'mmm', label: 'Closed Hum', sound: 'MMM', instruction: 'Sustain a gentle "MMM" sound with lips closed and shoulders relaxed.', benefit: 'Gives the breath a quiet, steady tone for calming attention.', category: 'vagus', resonates: 'Face & Throat', referenceHz: 130.81 },
   { id: 'gargle', label: 'Throat Warmup', sound: 'Gargle', instruction: 'Gargle with water for a short, comfortable round. Stop if it feels irritating or strained.', benefit: 'A practical throat warmup; use gently and skip it when uncomfortable.', category: 'vagus', resonates: 'Throat' },
   
   // Six Healing Sounds
   { id: 'si', label: 'Six Sounds: Si', sound: 'SI (Sss)', instruction: 'Exhale with a controlled "SSSS" sound. Keep the tone soft enough that the breath stays even.', benefit: 'A Liu Zi Jue / Six Healing Sounds practice traditionally associated with the lungs.', category: 'healing', resonates: 'Chest', referenceHz: 220 },
   { id: 'chui', label: 'Six Sounds: Chui', sound: 'CHUI', instruction: 'Exhale with a soft "CHWAY" or "CHWEE" sound, like gently blowing through the lips.', benefit: 'A traditional Six Healing Sounds exhale associated with the kidneys.', category: 'healing', resonates: 'Lower Back & Belly', referenceHz: 196 },
-  { id: 'xu', label: 'Six Sounds: Xu', sound: 'XU (Shu)', instruction: 'Make a gentle "SHOO" sound on the exhale. Let the ribs soften as the sound fades.', benefit: 'A traditional Six Healing Sounds exhale associated with the liver.', category: 'healing', resonates: 'Ribs & Side Body', referenceHz: 174.6 },
+  { id: 'xu', label: 'Six Sounds: Xu', sound: 'XU (Shu)', instruction: 'Make a gentle "SHOO" sound on the exhale. Let the ribs soften as the sound fades.', benefit: 'A traditional Six Healing Sounds exhale associated with the liver.', category: 'healing', resonates: 'Ribs & Side Body', referenceHz: 174.61 },
   { id: 'he', label: 'Six Sounds: He', sound: 'HE (Huh)', instruction: 'Exhale with a warm "HUH" or soft "HER" sound from an open throat.', benefit: 'A traditional Six Healing Sounds exhale associated with the heart.', category: 'healing', resonates: 'Chest', referenceHz: 220 },
   { id: 'hu', label: 'Six Sounds: Hu', sound: 'HU (Hoo)', instruction: 'Produce a rounded "HOO" sound, keeping the belly relaxed as you exhale.', benefit: 'A traditional Six Healing Sounds exhale associated with the spleen/stomach system.', category: 'healing', resonates: 'Upper Belly', referenceHz: 196 },
-  { id: 'xi', label: 'Six Sounds: Xi', sound: 'XI (Shee)', instruction: 'Exhale with a light "SHEE" sound. Use a clear but relaxed pitch.', benefit: 'A traditional Six Healing Sounds exhale associated with whole-body regulation.', category: 'healing', resonates: 'Torso', referenceHz: 261.6 },
+  { id: 'xi', label: 'Six Sounds: Xi', sound: 'XI (Shee)', instruction: 'Exhale with a light "SHEE" sound. Use a clear but relaxed pitch.', benefit: 'A traditional Six Healing Sounds exhale associated with whole-body regulation.', category: 'healing', resonates: 'Torso', referenceHz: 261.63 },
 
   // Bija Mantras
   { id: 'lam', label: 'Root Bija', sound: 'LAM', instruction: 'Chant "LAM" as "LA-MNG," ending with a comfortable nasal hum.', benefit: 'A traditional root-chakra bija used as a grounding meditation focus.', category: 'bija', resonates: 'Lower Body', referenceHz: 256 },
@@ -773,7 +778,7 @@ export default function App() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [activeHaptic, setActiveHaptic] = useState<HapticPattern | null>(null);
-  const [isHealingMode, setIsHealingMode] = useState(true);
+  const [isHealingMode, setIsHealingMode] = useState(false);
   const [isSchumannActive, setIsSchumannActive] = useState(userProfile.useSchumann);
   const [isVisualizerActive, setIsVisualizerActive] = useState(userProfile.showVisualizer);
   const [isZenMode, setIsZenMode] = useState(false);
@@ -891,12 +896,8 @@ export default function App() {
   const schumannGain = useRef<GainNode | null>(null);
   const gainNode = useRef<GainNode | null>(null);
   const masterGainNode = useRef<GainNode | null>(null);
-  const pannerNode = useRef<PannerNode | null>(null);
   const sonicGainNode = useRef<GainNode | null>(null);
   const reverbNode = useRef<ConvolverNode | GainNode | null>(null);
-  const noiseNode = useRef<AudioBufferSourceNode | null>(null);
-  const noiseGain = useRef<GainNode | null>(null);
-  const spatialInterval = useRef<number | null>(null);
   const analyzer = useRef<AnalyserNode | null>(null);
   const micStream = useRef<MediaStream | null>(null);
   const micSource = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -939,24 +940,13 @@ export default function App() {
       gainNode.current = audioCtx.current.createGain();
       gainNode.current.gain.setValueAtTime(0, audioCtx.current.currentTime);
       
-      // Spatial Panner
-      pannerNode.current = audioCtx.current.createPanner();
-      pannerNode.current.panningModel = 'equalpower';
-      pannerNode.current.distanceModel = 'inverse';
-      
-      // Connect Solfeggio chain
-      gainNode.current.connect(pannerNode.current);
-      pannerNode.current.connect(masterGainNode.current);
+      // Connect Solfeggio chain directly so selected tones stay frequency-accurate.
+      gainNode.current.connect(masterGainNode.current);
 
       // Sonic Vocalizations Gain
       sonicGainNode.current = audioCtx.current.createGain();
       sonicGainNode.current.gain.setValueAtTime(0, audioCtx.current.currentTime);
       sonicGainNode.current.connect(masterGainNode.current);
-
-      // Brownian Noise Gain
-      noiseGain.current = audioCtx.current.createGain();
-      noiseGain.current.gain.setValueAtTime(0, audioCtx.current.currentTime);
-      noiseGain.current.connect(masterGainNode.current);
 
       // Schumann Resonance Gain
       schumannGain.current = audioCtx.current.createGain();
@@ -1015,11 +1005,6 @@ export default function App() {
   }, [initAudio, recordedUrl, triggerHaptic]);
 
   const stopFrequency = useCallback(() => {
-    if (spatialInterval.current) {
-      clearInterval(spatialInterval.current);
-      spatialInterval.current = null;
-    }
-
     if (schumannOsc.current) {
       const now = audioCtx.current!.currentTime;
       schumannGain.current!.gain.linearRampToValueAtTime(0, now + 0.5);
@@ -1028,16 +1013,6 @@ export default function App() {
         try { node.stop(); node.disconnect(); } catch (e) {}
       }, 600);
       schumannOsc.current = null;
-    }
-
-    if (noiseNode.current) {
-      const now = audioCtx.current!.currentTime;
-      noiseGain.current!.gain.linearRampToValueAtTime(0, now + 0.5);
-      const node = noiseNode.current;
-      setTimeout(() => {
-        try { node.stop(); node.disconnect(); } catch (e) {}
-      }, 600);
-      noiseNode.current = null;
     }
 
     if (oscillator.current) {
@@ -1133,8 +1108,8 @@ export default function App() {
     osc2.type = 'sine';
 
     if (healingEnabled) {
-      // Center the binaural beat (6Hz) around the target frequency
-      // This ensures the perceived pitch is EXACTLY the Solfeggio frequency
+      // Center a 6Hz binaural offset around the selected carrier frequency.
+      // Headphones are recommended; the displayed Hz remains the carrier center.
       osc1.frequency.setValueAtTime(freq.hz - 3, now);
       osc2.frequency.setValueAtTime(freq.hz + 3, now);
       
@@ -1156,53 +1131,14 @@ export default function App() {
       osc1.connect(gainNode.current!);
     }
 
-    // 8D Spatial Animation
-    if (healingEnabled && pannerNode.current) {
-      let angle = 0;
-      spatialInterval.current = window.setInterval(() => {
-        if (pannerNode.current) {
-          // Subtle movement to avoid breaking binaural beats
-          const x = Math.sin(angle) * 2; 
-          const z = Math.cos(angle) * 2;
-          pannerNode.current.positionX.setValueAtTime(x, ctx.currentTime);
-          pannerNode.current.positionZ.setValueAtTime(z, ctx.currentTime);
-          angle += 0.015; 
-        }
-      }, 50);
-
-      // Start Brownian Noise
-      const bufferSize = 2 * ctx.sampleRate;
-      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      let lastOut = 0.0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        output[i] = (lastOut + (0.02 * white)) / 1.02;
-        lastOut = output[i];
-        output[i] *= 3.5;
-      }
-      
-      const source = ctx.createBufferSource();
-      source.buffer = noiseBuffer;
-      source.loop = true;
-      source.connect(noiseGain.current!);
-      source.start();
-      noiseNode.current = source;
-      noiseGain.current!.gain.setValueAtTime(0, now);
-      noiseGain.current!.gain.linearRampToValueAtTime(0.02, now + 2);
-    } else if (pannerNode.current) {
-      pannerNode.current.positionX.setValueAtTime(0, now);
-      pannerNode.current.positionZ.setValueAtTime(0, now);
-    }
-
     gainNode.current!.gain.setValueAtTime(0, now);
     gainNode.current!.gain.linearRampToValueAtTime(0.8, now + 0.2);
     
-    // Schumann Resonance (7.83Hz Grounding)
+    // Schumann resonance anchor. 7.83Hz is the common rounded reference value.
     if (schumannEnabled) {
       const sOsc = ctx.createOscillator();
       sOsc.type = 'sine';
-      sOsc.frequency.setValueAtTime(7.83, now);
+      sOsc.frequency.setValueAtTime(SCHUMANN_RESONANCE_HZ, now);
       sOsc.connect(schumannGain.current!);
       sOsc.start();
       schumannOsc.current = sOsc;
@@ -2194,7 +2130,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shrink-0">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Healing Mode</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Binaural</span>
                 <button 
                   onClick={() => setIsHealingMode(!isHealingMode)}
                   className={cn(
@@ -4056,7 +3992,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
   }> = [
     {
       title: 'Solfeggio Frequencies',
-      description: 'Ancient tones used in sacred music and healing. Each frequency is believed to resonate with specific energy centers in the body. For example, 528Hz is known as the "Love Frequency" or "Miracle Tone," often used for DNA repair and clarity.',
+      description: `A commonly used modern wellness tone set: 174, 285, 396, 417, 528, 639, 741, 852, and 963Hz. These are intentional listening tones, not ${TUNING_STANDARD} note names or medical treatments.`,
       icon: Sparkles,
       iconClassName: 'text-app-accent',
       mode: 'frequencies',
@@ -4064,19 +4000,19 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Schumann Resonance',
-      description: 'Often called the "Earth\'s Heartbeat," this 7.83Hz frequency is the natural electromagnetic resonance of the Earth\'s atmosphere. It is used for grounding, reducing stress, and synchronizing your biological rhythms with the planet.',
+      description: `Often called the "Earth's Heartbeat," ${SCHUMANN_RESONANCE_HZ}Hz is the common rounded reference for the fundamental Schumann resonance. In Focus Flow it is used as a low grounding anchor.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
       mode: 'frequencies',
       cta: 'Open Grounding Tones'
     },
     {
-      title: 'Healing Mode (Binaural)',
-      description: 'When active, the app sends slightly different frequencies to each ear. Your brain perceives the difference as a third tone-a binaural beat. We use a 6Hz Theta beat, which is associated with deep meditation, creativity, and REM sleep.',
+      title: 'Binaural Mode',
+      description: 'When active, the app offsets the left and right carriers by 6Hz around the selected tone. Headphones are recommended for binaural perception; the displayed Hz remains the carrier center.',
       icon: Brain,
       iconClassName: 'text-blue-400',
       mode: 'frequencies',
-      cta: 'Open Healing Mode'
+      cta: 'Open Frequencies'
     },
     {
       title: 'EFT Tapping',
@@ -4104,7 +4040,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Haptic Feedback',
-      description: 'On mobile devices, haptics provide physical pulses to guide your breathing or grounding. On desktop, we use low-frequency audio pulses to simulate this effect. These patterns help regulate the nervous system by providing a rhythmic physical anchor.',
+      description: 'On mobile devices, haptics provide physical pulses to guide breathing or grounding. On desktop, low-frequency audio pulses simulate the pattern as a rhythmic practice anchor.',
       icon: Zap,
       iconClassName: 'text-app-accent',
       mode: 'haptics',
@@ -4217,7 +4153,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             </div>
             <h4 className="font-mono text-xs uppercase tracking-widest">Grounding (Schumann)</h4>
             <p className="text-xs text-app-muted leading-relaxed">
-              Choose **Schumann Resonance** when you feel scattered, anxious, or "out of sync." It provides a steady 7.83Hz anchor that mimics Earth's natural pulse, helping to stabilize your biological clock and reduce environmental stress.
+              Choose **Schumann Resonance** when you feel scattered or overstimulated. It provides a steady {SCHUMANN_RESONANCE_HZ}Hz low-frequency anchor based on the common rounded Schumann reference.
             </p>
           </div>
 
@@ -4225,9 +4161,9 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             <div className="w-10 h-10 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-400">
               <Sparkles size={20} />
             </div>
-            <h4 className="font-mono text-xs uppercase tracking-widest">Targeted Healing</h4>
+            <h4 className="font-mono text-xs uppercase tracking-widest">Intention Tone</h4>
             <p className="text-xs text-app-muted leading-relaxed">
-              Choose **Healing Mode (Solfeggio)** when you have a specific emotional or physical intention. Use 528Hz for clarity and repair, or 396Hz to release fear. This mode is best for active meditation and intentional energy work.
+              Choose a Solfeggio tone when you want a specific listening intention. Use 528Hz for clarity-focused practice, or 396Hz for a grounding release practice.
             </p>
           </div>
 
@@ -4250,15 +4186,15 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Earth Anchor" Stack</span>
-              <p className="text-[11px] text-app-muted">Combine **Schumann Resonance** with **Zen Mode** for the ultimate grounding experience. This creates a sensory-deprived environment where your body can fully synchronize with the Earth's pulse.</p>
+              <p className="text-[11px] text-app-muted">Combine **Schumann Resonance** with **Zen Mode** when you want a minimal screen and a steady low-frequency grounding anchor.</p>
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Vagal Reset" Stack</span>
-              <p className="text-[11px] text-app-muted">Use **Healing Mode** while performing **Sonic Vocalizations** if you like having a soft tone underneath your voice. Treat the guide tone as a steady listening anchor, not a required pitch.</p>
+              <p className="text-[11px] text-app-muted">Use a Solfeggio tone while performing **Sonic Vocalizations** if you like having a soft tone underneath your voice. Treat the guide tone as a steady listening anchor, not a required pitch.</p>
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Emotional Release" Stack</span>
-              <p className="text-[11px] text-app-muted">Use **EFT Tapping** while listening to **Solfeggio Frequencies**. Tapping clears the physical stress response while the frequencies provide the energetic resonance needed for emotional transformation.</p>
+              <p className="text-[11px] text-app-muted">Use **EFT Tapping** while listening to **Solfeggio Frequencies** when you want a body-based rhythm paired with a steady listening tone.</p>
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-white">The "Flow State" Stack</span>
@@ -4443,7 +4379,7 @@ function ProfileView({ profile, onUpdate, triggerHaptic }: {
             <div className="flex items-center justify-between p-4 rounded-2xl bg-black/20 border border-white/5">
               <div className="flex flex-col">
                 <span className="text-xs font-bold">Schumann Resonance</span>
-                <span className="text-[10px] text-app-muted">Enable 7.83Hz grounding by default</span>
+                <span className="text-[10px] text-app-muted">Enable {SCHUMANN_RESONANCE_HZ}Hz grounding by default</span>
               </div>
               <button 
                 onClick={() => onUpdate({ ...profile, useSchumann: !profile.useSchumann })}
