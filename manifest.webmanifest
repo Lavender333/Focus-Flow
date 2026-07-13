@@ -1,13 +1,13 @@
 {
   "name": "Focus Flow",
   "short_name": "Focus Flow",
-  "description": "Frequencies, breath, and haptics for focus and calm.",
+  "description": "A tone, a breath, a pulse in the hand.",
   "start_url": "/Focus-Flow/",
   "scope": "/Focus-Flow/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1a2420",
-  "theme_color": "#1a2420",
+  "background_color": "#141C19",
+  "theme_color": "#141C19",
   "categories": ["health", "lifestyle", "productivity"],
   "icons": [
     { "src": "/Focus-Flow/icon-192.png", "sizes": "192x192", "type": "image/png" },

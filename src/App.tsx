@@ -38,6 +38,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { BrandMark } from './components/BrandMark';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -1300,7 +1301,7 @@ export default function App() {
     if (hasMediaSessionSupport() && typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: `${freq.label} (${freq.hz}Hz)`,
-        artist: 'FocusFlow',
+        artist: 'Focus Flow',
         album: 'Solfeggio Frequencies',
         artwork: [
           { src: 'https://picsum.photos/seed/focus/512/512', sizes: '512x512', type: 'image/png' }
@@ -2248,10 +2249,8 @@ export default function App() {
           "w-[86px] sm:w-20 bg-black/35 border-r border-white/10 flex flex-col items-center justify-start gap-2 sm:gap-4 p-2 sm:p-4 transition-all duration-500 overflow-y-auto overflow-x-visible no-scrollbar shrink-0",
           isZenMode && "opacity-0 pointer-events-none -translate-x-20"
         )}>
-          <div className="w-11 h-11 rounded-2xl brand-mark p-[1px] mb-1 shrink-0">
-            <div className="w-full h-full rounded-2xl bg-black/70 flex items-center justify-center">
-              <Sparkles size={18} className="text-app-accent" />
-            </div>
+          <div className="w-11 h-11 rounded-2xl bg-black/45 border border-app-gold/25 flex items-center justify-center mb-1 shrink-0">
+            <BrandMark size={30} tone="gold" />
           </div>
           <NavButton 
             active={mode === 'home'} 
@@ -2325,9 +2324,12 @@ export default function App() {
             "p-4 sm:p-6 border-b border-white/5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-500 z-10",
             isZenMode && "opacity-0 pointer-events-none -translate-y-20"
           )}>
-            <div className="hidden sm:block">
-              <h1 className="text-xl sm:text-2xl font-serif italic tracking-tight">FocusFlow</h1>
-              <p className="text-[8px] sm:text-xs text-app-muted font-mono uppercase tracking-widest">Private Zen Escape</p>
+            <div className="hidden sm:flex items-center gap-3">
+              <BrandMark size={34} tone="gold" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-serif italic tracking-[0.04em]">Focus Flow</h1>
+                <p className="text-[8px] sm:text-xs text-app-muted font-mono uppercase tracking-widest">Private Zen Escape</p>
+              </div>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-visible pb-1 sm:pb-0">
@@ -2747,7 +2749,7 @@ export default function App() {
                     <Info size={16} className="text-app-accent shrink-0 mt-0.5" />
                     <div className="text-[10px] sm:text-xs text-app-muted leading-relaxed">
                       <p className="font-bold text-app-accent mb-1 uppercase tracking-widest">Background Play Enabled</p>
-                      <p>FocusFlow uses the Media Session API to keep audio active when your phone is locked or in the background. For uninterrupted sessions, enable **"Keep Screen On"** in your profile settings.</p>
+                      <p>Focus Flow uses the Media Session API to keep audio active when your phone is locked or in the background. For uninterrupted sessions, enable **"Keep Screen On"** in your profile settings.</p>
                     </div>
                   </div>
                 </motion.div>
@@ -4561,7 +4563,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
   return (
     <div className="h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-2 pb-12">
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-serif italic mb-1">The FocusFlow Guide</h2>
+        <h2 className="text-3xl font-serif italic mb-1">The Focus Flow Guide</h2>
         <p className="text-sm text-app-muted">Understanding the science and purpose behind your neural harmony tools.</p>
       </div>
 
@@ -5166,7 +5168,7 @@ function AboutView() {
           </div>
           <div className="space-y-4 text-sm text-app-muted leading-relaxed">
             <p>
-              <span className="text-white font-medium italic">FocusFlow</span> (Neuro Harmony) was born from a desire to bridge the gap between spiritual wellness and neurodivergent needs. 
+              <span className="text-white font-medium italic">Focus Flow</span> (Neuro Harmony) was born from a desire to bridge the gap between spiritual wellness and neurodivergent needs. 
             </p>
             <p>
               Designed specifically to facilitate <span className="text-app-accent">DeepFlow</span>, this platform leverages the power of Solfeggio frequencies, guided meridian tapping (EFT), and tactile haptic feedback.
@@ -5239,7 +5241,7 @@ function ReikiView() {
       <div className="glass p-8 rounded-[32px] border-white/5 bg-gradient-to-br from-app-accent/5 to-transparent">
         <div className="flex items-center gap-3 mb-6">
           <BookOpen className="text-app-accent" size={24} />
-          <h3 className="text-lg font-serif italic text-white">Using Symbols with FocusFlow</h3>
+          <h3 className="text-lg font-serif italic text-white">Using Symbols with Focus Flow</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-app-muted leading-relaxed">
           <div className="space-y-2">
