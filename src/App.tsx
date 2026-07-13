@@ -905,7 +905,45 @@ export default function App() {
   const droneGain = useRef<GainNode | null>(null);
   const audioFileElement = useRef<HTMLAudioElement | null>(null);
   const audioFileSource = useRef<MediaElementAudioSourceNode | null>(null);
+  const keepAlive = useRef<AudioBufferSourceNode | null>(null);
   const wakeLock = useRef<any>(null);
+
+  const startKeepAlive = useCallback((ctx: AudioContext) => {
+    if (keepAlive.current) return;
+
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const source = ctx.createBufferSource();
+    const keepAliveGain = ctx.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    keepAliveGain.gain.value = 0;
+    source.connect(keepAliveGain).connect(ctx.destination);
+    source.start();
+    keepAlive.current = source;
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if (!('wakeLock' in navigator) || wakeLock.current) return;
+
+    try {
+      wakeLock.current = await (navigator as any).wakeLock.request('screen');
+    } catch (err) {
+      const message = err instanceof Error ? `${err.name}, ${err.message}` : 'Wake lock request failed.';
+      console.warn(message);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (!wakeLock.current) return;
+
+    try {
+      await wakeLock.current.release();
+    } catch (err) {
+      console.warn('Wake lock release failed.', err);
+    } finally {
+      wakeLock.current = null;
+    }
+  }, []);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
@@ -960,6 +998,7 @@ export default function App() {
       // Connect all to analyzer for visualization
       gainNode.current.connect(analyzer.current);
       sonicGainNode.current.connect(analyzer.current);
+      startKeepAlive(audioCtx.current);
     }
     
     if (audioCtx.current?.state === 'suspended') {
@@ -967,7 +1006,7 @@ export default function App() {
     }
 
     return audioCtx.current;
-  }, [volume, isMuted]);
+  }, [volume, isMuted, startKeepAlive]);
 
   const startRecording = useCallback(() => {
     const ctx = initAudio();
@@ -1086,10 +1125,11 @@ export default function App() {
       navigator.mediaSession.playbackState = 'paused';
     }
 
+    void releaseWakeLock();
     setIsPlaying(false);
     setIsReferencePlaying(false);
     setActiveReferenceId(null);
-  }, []);
+  }, [releaseWakeLock]);
 
   const playFrequency = useCallback((freq: Frequency, options?: { healingMode?: boolean; schumannActive?: boolean }) => {
     const ctx = initAudio();
@@ -1173,7 +1213,8 @@ export default function App() {
     oscillator.current = osc1;
     setActiveFreq(freq);
     setIsPlaying(true);
-  }, [initAudio, stopFrequency, isHealingMode, isSchumannActive]);
+    void requestWakeLock();
+  }, [initAudio, stopFrequency, isHealingMode, isSchumannActive, requestWakeLock]);
 
   const launchSessionIntention = useCallback((intentionId: SessionIntentionId) => {
     const preset = SESSION_INTENTION_PRESETS.find((entry) => entry.id === intentionId);
@@ -1229,36 +1270,30 @@ export default function App() {
     }
   }, [activeFreq, playFrequency, stopFrequency]);
 
-  // Wake Lock Logic
+  // Wake Lock and resume logic
   useEffect(() => {
-    const requestWakeLock = async () => {
-      if ('wakeLock' in navigator && userProfile.keepScreenOn && isPlaying) {
-        try {
-          wakeLock.current = await (navigator as any).wakeLock.request('screen');
-        } catch (err) {
-          const message = err instanceof Error ? `${err.name}, ${err.message}` : 'Wake lock request failed.';
-          console.error(message);
-        }
-      }
-    };
-
-    const releaseWakeLock = async () => {
-      if (wakeLock.current) {
-        await wakeLock.current.release();
-        wakeLock.current = null;
-      }
-    };
-
-    if (isPlaying && userProfile.keepScreenOn) {
-      requestWakeLock();
+    if (isPlaying) {
+      void requestWakeLock();
     } else {
-      releaseWakeLock();
+      void releaseWakeLock();
     }
+  }, [isPlaying, requestWakeLock, releaseWakeLock]);
 
-    return () => {
-      releaseWakeLock();
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !isPlaying) return;
+
+      void audioCtx.current?.resume();
+      void requestWakeLock();
     };
-  }, [isPlaying, userProfile.keepScreenOn]);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isPlaying, requestWakeLock]);
+
+  useEffect(() => () => {
+    void releaseWakeLock();
+  }, [releaseWakeLock]);
 
   // Haptics Helper
 
