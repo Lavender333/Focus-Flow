@@ -32,7 +32,8 @@ import {
   Upload,
   X,
   Star,
-  LayoutGrid
+  LayoutGrid,
+  Flower2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -751,7 +752,6 @@ export default function App() {
   });
   const [selectedMoodId, setSelectedMoodId] = useState<MoodId>('scattered');
   const [activeGeneratedSession, setActiveGeneratedSession] = useState<Ritual | null>(null);
-  const [ritualName, setRitualName] = useState('');
   const [savedRituals, setSavedRituals] = useState<Ritual[]>(() => {
     try {
       const saved = getStoredValue('focusflow_rituals');
@@ -1005,21 +1005,42 @@ export default function App() {
   }, [initAudio, recordedUrl, triggerHaptic]);
 
   const stopFrequency = useCallback(() => {
+    const ctx = audioCtx.current;
+    if (!ctx) {
+      oscillator.current = null;
+      oscillator2.current = null;
+      schumannOsc.current = null;
+      setIsPlaying(false);
+      setIsReferencePlaying(false);
+      setActiveReferenceId(null);
+      return;
+    }
+
     if (schumannOsc.current) {
-      const now = audioCtx.current!.currentTime;
-      schumannGain.current!.gain.linearRampToValueAtTime(0, now + 0.5);
+      const now = ctx.currentTime;
+      if (schumannGain.current) {
+        schumannGain.current.gain.cancelScheduledValues(now);
+        schumannGain.current.gain.setValueAtTime(schumannGain.current.gain.value, now);
+        schumannGain.current.gain.setTargetAtTime(0.0001, now, 0.18);
+      }
       const node = schumannOsc.current;
       setTimeout(() => {
         try { node.stop(); node.disconnect(); } catch (e) {}
-      }, 600);
+      }, 700);
       schumannOsc.current = null;
     }
 
     if (oscillator.current) {
-      const now = audioCtx.current!.currentTime;
-      gainNode.current!.gain.linearRampToValueAtTime(0, now + 0.2);
+      const now = ctx.currentTime;
+      if (gainNode.current) {
+        gainNode.current.gain.cancelScheduledValues(now);
+        gainNode.current.gain.setValueAtTime(gainNode.current.gain.value, now);
+        gainNode.current.gain.setTargetAtTime(0.0001, now, 0.08);
+      }
       if (sonicGainNode.current) {
-        sonicGainNode.current.gain.linearRampToValueAtTime(0, now + 0.2);
+        sonicGainNode.current.gain.cancelScheduledValues(now);
+        sonicGainNode.current.gain.setValueAtTime(sonicGainNode.current.gain.value, now);
+        sonicGainNode.current.gain.setTargetAtTime(0.0001, now, 0.08);
       }
       
       const osc1 = oscillator.current;
@@ -1055,7 +1076,7 @@ export default function App() {
             });
           }
         } catch (e) {}
-      }, 600);
+      }, 700);
       
       oscillator.current = null;
       oscillator2.current = null;
@@ -1131,8 +1152,9 @@ export default function App() {
       osc1.connect(gainNode.current!);
     }
 
-    gainNode.current!.gain.setValueAtTime(0, now);
-    gainNode.current!.gain.linearRampToValueAtTime(0.8, now + 0.2);
+    gainNode.current!.gain.cancelScheduledValues(now);
+    gainNode.current!.gain.setValueAtTime(0.0001, now);
+    gainNode.current!.gain.exponentialRampToValueAtTime(0.42, now + 0.8);
     
     // Schumann resonance anchor. 7.83Hz is the common rounded reference value.
     if (schumannEnabled) {
@@ -1142,8 +1164,9 @@ export default function App() {
       sOsc.connect(schumannGain.current!);
       sOsc.start();
       schumannOsc.current = sOsc;
-      schumannGain.current!.gain.setValueAtTime(0, now);
-      schumannGain.current!.gain.linearRampToValueAtTime(0.1, now + 2);
+      schumannGain.current!.gain.cancelScheduledValues(now);
+      schumannGain.current!.gain.setValueAtTime(0.0001, now);
+      schumannGain.current!.gain.exponentialRampToValueAtTime(0.045, now + 2);
     }
 
     osc1.start();
@@ -1281,7 +1304,7 @@ export default function App() {
               
               g.connect(audioCtx.current!.destination);
               g.gain.setValueAtTime(0, now);
-              g.gain.linearRampToValueAtTime(0.05, now + 0.01);
+              g.gain.linearRampToValueAtTime(0.015, now + 0.04);
               g.gain.exponentialRampToValueAtTime(0.0001, now + (duration / 1000));
               
               osc.connect(g);
@@ -1333,8 +1356,8 @@ export default function App() {
     const osc2 = ctx.createOscillator();
     const subOsc = ctx.createOscillator();
     
-    osc1.type = 'sawtooth';
-    osc2.type = 'sawtooth';
+    osc1.type = 'triangle';
+    osc2.type = 'sine';
     subOsc.type = 'sine';
     
     osc1.frequency.setValueAtTime(freq, now);
@@ -1356,7 +1379,7 @@ export default function App() {
     breathSource.loop = true;
     
     const breathGain = ctx.createGain();
-    breathGain.gain.setValueAtTime(0.08, now);
+    breathGain.gain.setValueAtTime(0.018, now);
     
     // 3. Formant Filters: Simulating the vocal tract resonances
     // Vowel Formant frequencies (F1, F2, F3, F4)
@@ -1432,7 +1455,7 @@ export default function App() {
 
     // 5. Connections
     const sourceMix = ctx.createGain();
-    sourceMix.gain.setValueAtTime(0.5, now);
+    sourceMix.gain.setValueAtTime(0.32, now);
     
     osc1.connect(sourceMix);
     osc2.connect(sourceMix);
@@ -1442,7 +1465,7 @@ export default function App() {
 
     const vocalMix = ctx.createGain();
     vocalMix.gain.setValueAtTime(0, now);
-    vocalMix.gain.linearRampToValueAtTime(0.8, now + 0.3);
+    vocalMix.gain.linearRampToValueAtTime(0.42, now + 0.6);
 
     formants.forEach(f => {
       sourceMix.connect(f.filter);
@@ -1459,7 +1482,7 @@ export default function App() {
 
     const finalFilter = ctx.createBiquadFilter();
     finalFilter.type = 'lowpass';
-    finalFilter.frequency.setValueAtTime(6000, now);
+    finalFilter.frequency.setValueAtTime(3600, now);
 
     vocalMix.connect(compressor);
     compressor.connect(finalFilter);
@@ -1467,8 +1490,9 @@ export default function App() {
 
     if (sonicGainNode.current) {
       finalFilter.connect(sonicGainNode.current);
-      sonicGainNode.current.gain.setValueAtTime(0, now);
-      sonicGainNode.current.gain.linearRampToValueAtTime(0.6, now + 0.5);
+      sonicGainNode.current.gain.cancelScheduledValues(now);
+      sonicGainNode.current.gain.setValueAtTime(0.0001, now);
+      sonicGainNode.current.gain.exponentialRampToValueAtTime(0.35, now + 0.7);
     }
 
     osc1.start();
@@ -1772,38 +1796,23 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    setRitualName(preset.sessionName);
     applyRitual(ritual);
   }, [applyRitual]);
 
-  const saveCurrentRitual = useCallback(() => {
+  const completeGardenSession = useCallback(() => {
     const preset = MOOD_SESSION_PRESETS.find((entry) => entry.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
-    const frequencyId = activeFreq?.id ?? preset.frequencyId;
-    const hapticId = activeHaptic?.id ?? userProfile.preferredHapticId ?? preset.hapticId;
-    const name = ritualName.trim() || activeGeneratedSession?.name || `${preset.label} Ritual`;
-
-    const ritual: Ritual = {
-      id: `ritual-${Date.now()}`,
-      name,
-      moodId: selectedMoodId,
-      frequencyId,
-      hapticId,
-      chantId: selectedChant?.id ?? preset.chantId,
-      minutes: userProfile.focusMinutes || preset.minutes,
-      useSchumann: isSchumannActive,
-      healingMode: isHealingMode,
+    const session: Ritual = activeGeneratedSession ?? {
+      id: `session-${Date.now()}`,
+      name: preset.sessionName,
+      moodId: preset.id,
+      frequencyId: preset.frequencyId,
+      hapticId: preset.hapticId,
+      chantId: preset.chantId,
+      minutes: preset.minutes,
+      useSchumann: preset.useSchumann,
+      healingMode: preset.healingMode,
       createdAt: new Date().toISOString()
     };
-
-    setSavedRituals((current) => [ritual, ...current.filter((entry) => entry.name.toLowerCase() !== name.toLowerCase())].slice(0, 12));
-    setActiveGeneratedSession(ritual);
-    setRitualName(name);
-    triggerHaptic([30, 50, 30]);
-  }, [activeFreq, activeGeneratedSession, activeHaptic, isHealingMode, isSchumannActive, ritualName, selectedChant, selectedMoodId, triggerHaptic, userProfile.focusMinutes, userProfile.preferredHapticId]);
-
-  const completeGardenSession = useCallback(() => {
-    const session = activeGeneratedSession;
-    if (!session) return;
 
     const entry: GardenEntry = {
       id: `garden-${Date.now()}`,
@@ -1817,7 +1826,7 @@ export default function App() {
     setGardenEntries((current) => [entry, ...current].slice(0, 60));
     setActiveGeneratedSession(null);
     triggerHaptic([60, 30, 60]);
-  }, [activeGeneratedSession, triggerHaptic]);
+  }, [activeGeneratedSession, selectedMoodId, triggerHaptic]);
 
   const stopAll = useCallback(() => {
     stopFrequency();
@@ -1851,7 +1860,7 @@ export default function App() {
     
     const noteGain = audioCtx.current.createGain();
     noteGain.gain.setValueAtTime(0, now);
-    noteGain.gain.linearRampToValueAtTime(0.4, now + 0.005);
+    noteGain.gain.linearRampToValueAtTime(0.32, now + 0.018);
     noteGain.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
     
     // Harmonic Overtones (The "Shimmer")
@@ -1860,7 +1869,7 @@ export default function App() {
     harmonic1.frequency.setValueAtTime(freq * 2, now);
     const h1Gain = audioCtx.current.createGain();
     h1Gain.gain.setValueAtTime(0, now);
-    h1Gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
+    h1Gain.gain.linearRampToValueAtTime(0.1, now + 0.018);
     h1Gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
     
     const harmonic2 = audioCtx.current.createOscillator();
@@ -1868,7 +1877,7 @@ export default function App() {
     harmonic2.frequency.setValueAtTime(freq * 3, now);
     const h2Gain = audioCtx.current.createGain();
     h2Gain.gain.setValueAtTime(0, now);
-    h2Gain.gain.linearRampToValueAtTime(0.08, now + 0.012);
+    h2Gain.gain.linearRampToValueAtTime(0.05, now + 0.024);
     h2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
 
     // Initial Strike (Transient)
@@ -1884,8 +1893,8 @@ export default function App() {
     noiseFilter.frequency.setValueAtTime(freq * 4, now);
     
     const noiseGain = audioCtx.current.createGain();
-    noiseGain.gain.setValueAtTime(0.1, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+    noiseGain.gain.setValueAtTime(0.026, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
 
     // Resonance Body Simulation
     const resonator = audioCtx.current.createBiquadFilter();
@@ -2259,9 +2268,6 @@ export default function App() {
                     onSelectMood={setSelectedMoodId}
                     onLaunchMoodSession={launchMoodSession}
                     activeGeneratedSession={activeGeneratedSession}
-                    ritualName={ritualName}
-                    onRitualNameChange={setRitualName}
-                    onSaveRitual={saveCurrentRitual}
                     savedRituals={savedRituals}
                     onLaunchRitual={applyRitual}
                     onDeleteRitual={(ritualId) => setSavedRituals((current) => current.filter((ritual) => ritual.id !== ritualId))}
@@ -2707,9 +2713,6 @@ function PracticeHub({
   onSelectMood,
   onLaunchMoodSession,
   activeGeneratedSession,
-  ritualName,
-  onRitualNameChange,
-  onSaveRitual,
   savedRituals,
   onLaunchRitual,
   onDeleteRitual,
@@ -2720,9 +2723,6 @@ function PracticeHub({
   onSelectMood: (moodId: MoodId) => void,
   onLaunchMoodSession: (moodId: MoodId) => void,
   activeGeneratedSession: Ritual | null,
-  ritualName: string,
-  onRitualNameChange: (name: string) => void,
-  onSaveRitual: () => void,
   savedRituals: Ritual[],
   onLaunchRitual: (ritual: Ritual) => void,
   onDeleteRitual: (ritualId: string) => void,
@@ -2732,6 +2732,8 @@ function PracticeHub({
   const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
   const totalMinutes = gardenEntries.reduce((sum, entry) => sum + entry.minutes, 0);
   const lastSevenEntries = gardenEntries.slice(0, 7);
+  const activeSessionName = activeGeneratedSession?.name ?? selectedMood.sessionName;
+  const isSessionActive = Boolean(activeGeneratedSession);
 
   const describeRitual = (ritual: Pick<Ritual, 'frequencyId' | 'hapticId' | 'minutes' | 'chantId'>) => {
     const frequency = SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === ritual.frequencyId);
@@ -2748,48 +2750,47 @@ function PracticeHub({
 
   return (
     <section className="mb-8 grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-4">
-      <div className="premium-card zen-arrival p-4 sm:p-5 rounded-[32px]">
-        <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 mb-5">
+      <div className="premium-card zen-arrival p-4 sm:p-6 rounded-[32px]">
+        <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 mb-5">
           <div className="zen-arrival-copy">
             <div className="flex items-center gap-2 text-app-accent mb-3">
               <Sparkles size={16} />
-              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Private Ritual Concierge</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Begin here</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-serif italic leading-tight max-w-3xl">Step into a quieter room.</h2>
+            <h2 className="text-3xl sm:text-5xl font-serif italic leading-tight max-w-3xl">Begin with an exhale.</h2>
             <p className="text-sm sm:text-base text-app-muted leading-relaxed mt-3 max-w-2xl">
-              Tell Focus Flow what your body is asking for. It sets the tone, pulse, breath guide, and session length like a calm attendant preparing the room.
+              Choose what you want to feel. Focus Flow starts the tone, pulse, and guide for you.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="zen-chip">soft landing</span>
-              <span className="zen-chip">breath-led</span>
-              <span className="zen-chip">frequency tuned</span>
+              <span className="zen-chip">one tap</span>
+              <span className="zen-chip">no setup</span>
+              <span className="zen-chip">bloom after</span>
             </div>
           </div>
 
-          <div className="zen-scene-panel" aria-hidden="true">
-            <div className="zen-sunline" />
-            <div className="zen-water" />
-            <div className="zen-stone zen-stone-one" />
-            <div className="zen-stone zen-stone-two" />
-            <div className="zen-scene-caption">
-              <span>Today's escape</span>
-              <strong>{selectedMood.sessionName}</strong>
-              <small>{selectedMood.minutes} min / {describeRitual(selectedMood)}</small>
+          <div className="zen-current-session">
+            <span className="zen-current-kicker">{isSessionActive ? 'Now playing' : 'Recommended'}</span>
+            <strong>{activeSessionName}</strong>
+            <p>{selectedMood.summary}</p>
+            <div className="zen-current-meta">
+              <span>{SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === selectedMood.frequencyId)?.hz}Hz</span>
+              <span>{selectedMood.minutes} min</span>
+              <span>{selectedMood.chantId ? SONIC_CHANTS.find((entry) => entry.id === selectedMood.chantId)?.sound : 'Silent'}</span>
             </div>
           </div>
         </div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Choose your arrival state</p>
-            <p className="text-xs text-app-muted mt-1">Each choice prepares a complete ritual, not just a sound.</p>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">How do you want to feel?</p>
+            <p className="text-xs text-app-muted mt-1">Tap the closest feeling. The session changes around you.</p>
           </div>
           <button
             onClick={() => onLaunchMoodSession(selectedMood.id)}
             className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-app-accent text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
           >
             <Play size={14} fill="currentColor" />
-            Prepare Ritual
+            Start My Reset
           </button>
         </div>
 
@@ -2819,11 +2820,11 @@ function PracticeHub({
           ))}
         </div>
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4">
           <div className="zen-ritual-preview p-4 rounded-2xl bg-black/35 border border-white/10 relative overflow-hidden">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Prepared Path</p>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Your reset</p>
                 <h3 className="text-xl font-serif italic mt-1">{selectedMood.sessionName}</h3>
               </div>
               <span className="px-2 py-1 rounded-full bg-white/5 text-[9px] font-mono uppercase tracking-widest text-app-muted">
@@ -2851,33 +2852,21 @@ function PracticeHub({
             </div>
           </div>
 
-          <div className="zen-studio p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3">
+          <div className="zen-studio p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3 justify-between">
             <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Studio</p>
-              <h3 className="text-lg font-serif italic">Keep this room</h3>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Progress Garden</p>
+              <h3 className="text-lg font-serif italic">Bloom when you finish</h3>
+              <p className="text-xs text-app-muted leading-relaxed mt-2">
+                No saving required. Complete the reset and add a bloom to your garden.
+              </p>
             </div>
-            <input
-              value={ritualName}
-              onChange={(event) => onRitualNameChange(event.target.value)}
-              placeholder={activeGeneratedSession?.name || `${selectedMood.label} Ritual`}
-              className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-app-accent/50"
-            />
             <button
-              onClick={onSaveRitual}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/15 transition-colors font-mono text-[10px] uppercase tracking-widest"
+              onClick={onCompleteSession}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-emerald-300 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
             >
-              <Save size={13} />
-              Save Ritual
+              <CheckCircle2 size={13} />
+              Bloom Complete
             </button>
-            {activeGeneratedSession && (
-              <button
-                onClick={onCompleteSession}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-300 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
-              >
-                <CheckCircle2 size={13} />
-                Complete + Bloom
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -2947,7 +2936,7 @@ function PracticeHub({
                   )}
                   title={entry ? `${entry.ritualName} / ${entry.minutes} min` : 'Empty garden space'}
                 >
-                  {entry ? (mood?.label[0] ?? '*') : ''}
+                  {entry ? <Flower2 size={18} strokeWidth={1.8} aria-hidden="true" /> : ''}
                 </div>
               );
             })}

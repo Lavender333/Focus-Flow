@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && cp dist/app.html dist/index.html && mkdir -p assets && cp dist/assets/app.js assets/app.js && cp dist/assets/app.css assets/app.css",
+    "build": "vite build && cp dist/app.html dist/index.html && cp dist/index.html index.html && mkdir -p assets && cp -R dist/assets/. assets/",
     "build:ios": "VITE_BASE_PATH=./ vite build && cp dist/app.html dist/index.html",
     "sync:ios": "npm run build:ios && npx cap sync ios",
     "open:ios": "npm run sync:ios && npx cap open ios",

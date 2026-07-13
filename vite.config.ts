@@ -11,13 +11,6 @@ export default defineConfig(({mode}) => {
     build: {
       rollupOptions: {
         input: path.resolve(__dirname, 'app.html'),
-        output: {
-          entryFileNames: 'assets/app.js',
-          assetFileNames: assetInfo =>
-            assetInfo.name?.endsWith('.css')
-              ? 'assets/app.css'
-              : 'assets/[name]-[hash][extname]',
-        },
       },
     },
     define: {
