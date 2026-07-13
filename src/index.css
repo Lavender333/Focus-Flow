@@ -6,12 +6,12 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --font-serif: "Playfair Display", serif;
 
-  --color-app-bg: #05070a;
-  --color-app-card: #11151b;
-  --color-app-accent: #6ee7b7;
-  --color-app-gold: #f7d78a;
-  --color-app-text: #ffffff;
-  --color-app-muted: #a0a7b4;
+  --color-app-bg: #f5f8f3;
+  --color-app-card: #ffffff;
+  --color-app-accent: #4f8f7a;
+  --color-app-gold: #c59b54;
+  --color-app-text: #23312c;
+  --color-app-muted: #6f7e76;
 
   --breakpoint-xs: 400px;
 }
@@ -26,41 +26,40 @@
   body {
     @apply bg-app-bg text-app-text font-sans antialiased;
     background:
-      radial-gradient(circle at 12% 8%, rgba(110, 231, 183, 0.16), transparent 34%),
-      radial-gradient(circle at 88% 10%, rgba(125, 92, 255, 0.13), transparent 30%),
-      radial-gradient(circle at 50% 100%, rgba(247, 215, 138, 0.08), transparent 34%),
-      linear-gradient(135deg, #05070a 0%, #0a0f14 44%, #05060a 100%);
+      linear-gradient(115deg, rgba(245, 248, 243, 0.96), rgba(232, 243, 238, 0.9) 46%, rgba(248, 244, 232, 0.88)),
+      linear-gradient(180deg, #f8fbf7 0%, #edf5f1 52%, #f7f0e2 100%);
   }
 }
 
 .glass {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
-  backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(244, 250, 246, 0.58));
+  backdrop-filter: blur(30px) saturate(135%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
 }
 
 .neon-glow {
-  box-shadow: 0 0 26px rgba(110, 231, 183, 0.22);
+  box-shadow: 0 18px 50px rgba(79, 143, 122, 0.18);
 }
 
 .premium-shell {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
-    linear-gradient(180deg, rgba(110, 231, 183, 0.045), transparent 44%);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(241, 249, 245, 0.62)),
+    linear-gradient(180deg, rgba(197, 155, 84, 0.08), transparent 44%);
   box-shadow:
-    0 30px 90px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    0 34px 90px rgba(69, 94, 84, 0.18),
+    0 6px 22px rgba(197, 155, 84, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
 .premium-card {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
-    radial-gradient(circle at 20% 0%, rgba(110, 231, 183, 0.08), transparent 42%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 50px rgba(0, 0, 0, 0.22);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(238, 248, 243, 0.62)),
+    linear-gradient(180deg, rgba(197, 155, 84, 0.055), transparent 52%);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 18px 46px rgba(70, 96, 84, 0.12);
 }
 
 .premium-card::before {
@@ -68,38 +67,119 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.16), transparent 18%, transparent 78%, rgba(247, 215, 138, 0.08));
-  opacity: 0.55;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.34), transparent 22%, transparent 78%, rgba(197, 155, 84, 0.08));
+  opacity: 0.7;
 }
 
 .premium-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(110, 231, 183, 0.42), rgba(247, 215, 138, 0.32), transparent);
+  background: linear-gradient(90deg, transparent, rgba(79, 143, 122, 0.28), rgba(197, 155, 84, 0.34), transparent);
 }
 
 .ambient-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at 50% 35%, black, transparent 72%);
+    linear-gradient(rgba(79, 143, 122, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197, 155, 84, 0.04) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(180deg, black, transparent 78%);
 }
 
 .brand-mark {
   background:
-    conic-gradient(from 180deg, #6ee7b7, #f7d78a, #8b7cff, #6ee7b7);
-  box-shadow: 0 0 34px rgba(110, 231, 183, 0.24), inset 0 0 22px rgba(0, 0, 0, 0.2);
+    conic-gradient(from 180deg, #4f8f7a, #c59b54, #8ca6b8, #4f8f7a);
+  box-shadow: 0 18px 36px rgba(79, 143, 122, 0.2), inset 0 0 18px rgba(255, 255, 255, 0.48);
 }
 
 .garden-bloom {
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.95) 0 8%, transparent 9%),
-    conic-gradient(from 24deg, #6ee7b7, #f7d78a, #8b7cff, #7dd3fc, #6ee7b7);
-  box-shadow: 0 0 22px rgba(110, 231, 183, 0.34), inset 0 0 14px rgba(0, 0, 0, 0.28);
+    conic-gradient(from 24deg, #4f8f7a, #c59b54, #9db7c6, #b88c9b, #4f8f7a);
+  box-shadow: 0 14px 28px rgba(79, 143, 122, 0.24), inset 0 0 12px rgba(255, 255, 255, 0.62);
 }
 
 .premium-button {
-  box-shadow: 0 14px 34px rgba(110, 231, 183, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 16px 34px rgba(79, 143, 122, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.zen-atmosphere {
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.76) 0%, rgba(237, 247, 242, 0.58) 38%, rgba(248, 241, 225, 0.54) 100%),
+    linear-gradient(62deg, transparent 0 18%, rgba(157, 183, 198, 0.18) 18% 26%, transparent 26% 62%, rgba(79, 143, 122, 0.12) 62% 70%, transparent 70%),
+    linear-gradient(180deg, #f9fbf8 0%, #eef6f2 48%, #f7efe1 100%);
+}
+
+.luxury-zen .bg-black\/20,
+.luxury-zen .bg-black\/25,
+.luxury-zen .bg-black\/30,
+.luxury-zen .bg-black\/35,
+.luxury-zen .bg-black\/40,
+.luxury-zen .bg-black\/70,
+.luxury-zen .bg-zinc-700,
+.luxury-zen .bg-zinc-700\/50,
+.luxury-zen .bg-zinc-800,
+.luxury-zen .bg-zinc-800\/80,
+.luxury-zen .bg-zinc-900,
+.luxury-zen .bg-zinc-950 {
+  background-color: rgba(255, 255, 255, 0.54) !important;
+}
+
+.luxury-zen .bg-white\/5,
+.luxury-zen .bg-white\/8,
+.luxury-zen .bg-white\/10,
+.luxury-zen .bg-white\/15,
+.luxury-zen .bg-white\/20,
+.luxury-zen .bg-white\/\[0\.02\],
+.luxury-zen .bg-white\/\[0\.065\] {
+  background-color: rgba(255, 255, 255, 0.46) !important;
+}
+
+.luxury-zen .border-white\/5,
+.luxury-zen .border-white\/10,
+.luxury-zen .border-white\/20 {
+  border-color: rgba(79, 143, 122, 0.16) !important;
+}
+
+.luxury-zen .text-white,
+.luxury-zen .text-white\/80,
+.luxury-zen .text-white\/75,
+.luxury-zen .text-white\/60,
+.luxury-zen .text-white\/50,
+.luxury-zen .text-white\/40,
+.luxury-zen .text-white\/20 {
+  color: #24342f !important;
+}
+
+.luxury-zen .text-app-muted {
+  color: #6f7e76 !important;
+}
+
+.luxury-zen .text-emerald-300,
+.luxury-zen .text-emerald-400,
+.luxury-zen .text-blue-400,
+.luxury-zen .text-purple-400,
+.luxury-zen .text-sky-400 {
+  color: #4f8f7a !important;
+}
+
+.luxury-zen .from-zinc-800 {
+  --tw-gradient-from: #e4eee9 !important;
+  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position)) !important;
+}
+
+.luxury-zen .to-zinc-950 {
+  --tw-gradient-to: #cfded7 !important;
+}
+
+.luxury-zen input,
+.luxury-zen select {
+  color: #24342f;
+  background-color: rgba(255, 255, 255, 0.62) !important;
+  border-color: rgba(79, 143, 122, 0.18) !important;
+}
+
+.luxury-zen ::selection {
+  color: #ffffff;
+  background: #4f8f7a;
 }
 
 .tapping-pulse {

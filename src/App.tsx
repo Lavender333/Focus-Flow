@@ -1919,16 +1919,11 @@ export default function App() {
   }, [initAudio]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative">
+    <div className="luxury-zen min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative">
       {/* Background Atmosphere */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 ambient-grid opacity-60" />
-        <div 
-          className="absolute top-[-12%] left-[-8%] w-[42%] h-[42%] rounded-full blur-[140px] opacity-25 transition-colors duration-1000"
-          style={{ backgroundColor: activeFreq?.color || '#00ff9d' }}
-        />
-        <div className="absolute top-[8%] right-[-8%] w-[28%] h-[28%] bg-violet-500/15 rounded-full blur-[110px]" />
-        <div className="absolute bottom-[-12%] right-[18%] w-[34%] h-[34%] bg-amber-300/10 rounded-full blur-[130px]" />
+        <div className="absolute inset-0 zen-atmosphere" />
+        <div className="absolute inset-0 ambient-grid opacity-45" />
       </div>
 
       {/* Main Container */}
@@ -2051,7 +2046,7 @@ export default function App() {
           )}>
             <div className="hidden sm:block">
               <h1 className="text-xl sm:text-2xl font-serif italic tracking-tight">FocusFlow</h1>
-              <p className="text-[8px] sm:text-xs text-app-muted font-mono uppercase tracking-widest">Neural Harmony & Focus</p>
+              <p className="text-[8px] sm:text-xs text-app-muted font-mono uppercase tracking-widest">Private Zen Escape</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-visible pb-1 sm:pb-0">
@@ -2760,9 +2755,9 @@ function PracticeHub({
               <Sparkles size={16} />
               <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Mood-to-Session Generator</span>
             </div>
-            <h2 className="text-2xl sm:text-4xl font-serif italic">What does your system need?</h2>
-            <p className="text-xs sm:text-sm text-app-muted leading-relaxed mt-2 max-w-2xl">
-              Pick a state and Focus Flow builds a tone, haptic, chant guide, and timer length around it.
+              <h2 className="text-2xl sm:text-4xl font-serif italic">Begin with an exhale.</h2>
+              <p className="text-xs sm:text-sm text-app-muted leading-relaxed mt-2 max-w-2xl">
+              Choose how you want to feel, and Focus Flow prepares a calm tone, gentle pulse, vocal guide, and timed ritual around it.
             </p>
           </div>
 
