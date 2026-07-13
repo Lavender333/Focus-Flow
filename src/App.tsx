@@ -339,7 +339,7 @@ interface UserProfile {
   keepScreenOn: boolean;
 }
 
-type AppMode = 'home' | 'practice' | 'garden' | 'you' | 'studio';
+type AppMode = 'home' | 'session' | 'garden' | 'you' | 'studio';
 type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
@@ -422,7 +422,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I want to lock in and get useful work done.',
     recommendation: 'Best path: 528Hz focus tone with your work timer.',
     actionLabel: 'Start Focus Session',
-    mode: 'practice',
+    mode: 'session',
     frequencyId: '528',
     icon: Zap,
     iconClassName: 'text-app-accent'
@@ -433,7 +433,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I feel scattered and want to feel stable again.',
     recommendation: 'Best path: grounding frequencies with Schumann support.',
     actionLabel: 'Start Grounding Tone',
-    mode: 'practice',
+    mode: 'session',
     frequencyId: '396',
     icon: Activity,
     iconClassName: 'text-amber-500'
@@ -444,7 +444,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I want a restorative, inward session.',
     recommendation: 'Best path: healing frequency mode with a restorative tone.',
     actionLabel: 'Start Healing Tone',
-    mode: 'practice',
+    mode: 'session',
     frequencyId: '639',
     icon: Sparkles,
     iconClassName: 'text-pink-400'
@@ -845,6 +845,7 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>('home');
   const [studioMode, setStudioMode] = useState<StudioMode>('chants');
   const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
+  const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState(0);
   const [completedSession, setCompletedSession] = useState<Ritual | null>(null);
   const [showStartHere, setShowStartHere] = useState(() => getStoredValue('focusflow_start_here_dismissed') !== 'true');
   const [selectedSessionIntention, setSelectedSessionIntention] = useState<SessionIntentionId>(() => {
@@ -933,11 +934,26 @@ export default function App() {
     ) ?? SOLFEGGIO_FREQUENCIES[0];
 
     dismissStartHere();
-    setMode('practice');
+    setMode('session');
     setSessionPhase('settling');
     setCompletedSession(null);
+    setSessionRemainingSeconds(Math.max(30, userProfile.focusMinutes * 60));
+    setActiveGeneratedSession({
+      id: `quick-${Date.now()}`,
+      name: starterFrequency.label,
+      moodId: selectedMoodId,
+      frequencyId: starterFrequency.id,
+      hapticId: userProfile.preferredHapticId ?? 'focus',
+      minutes: userProfile.focusMinutes,
+      useSchumann: isSchumannActive,
+      healingMode: isHealingMode,
+      createdAt: new Date().toISOString()
+    });
     playFrequency(starterFrequency);
     triggerHaptic(20);
+    window.setTimeout(() => {
+      setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
+    }, 18000);
   };
 
   useEffect(() => {
@@ -1447,11 +1463,28 @@ export default function App() {
 
     if (preset.frequencyId) {
       const targetFrequency = SOLFEGGIO_FREQUENCIES.find((frequency) => frequency.id === preset.frequencyId);
-      setMode('practice');
+      setMode('session');
+      setSessionPhase('settling');
+      setCompletedSession(null);
+      setSessionRemainingSeconds(Math.max(30, userProfile.focusMinutes * 60));
       if (targetFrequency) {
+        setActiveGeneratedSession({
+          id: `intent-${Date.now()}`,
+          name: preset.actionLabel.replace(/^Start\s+/i, ''),
+          moodId: selectedMoodId,
+          frequencyId: targetFrequency.id,
+          hapticId: userProfile.preferredHapticId ?? 'focus',
+          minutes: userProfile.focusMinutes,
+          useSchumann: isSchumannActive,
+          healingMode: isHealingMode,
+          createdAt: new Date().toISOString()
+        });
         playFrequency(targetFrequency);
       }
       triggerHaptic([20, 40]);
+      window.setTimeout(() => {
+        setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
+      }, 18000);
       return;
     }
 
@@ -1462,7 +1495,7 @@ export default function App() {
       setMode(preset.mode as AppMode);
     }
     triggerHaptic(20);
-  }, [dismissStartHere, playFrequency]);
+  }, [dismissStartHere, isHealingMode, isSchumannActive, playFrequency, selectedMoodId, userProfile.focusMinutes, userProfile.preferredHapticId]);
 
   useEffect(() => {
     if (masterGainNode.current && audioCtx.current) {
@@ -2043,8 +2076,9 @@ export default function App() {
     const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === ritual.hapticId);
     const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
 
-    setMode('practice');
+    setMode('session');
     setSessionPhase('settling');
+    setSessionRemainingSeconds(Math.max(30, ritual.minutes * 60));
     setCompletedSession(null);
     setSelectedMoodId(ritual.moodId);
     setUserProfile((profile) => ({
@@ -2087,6 +2121,8 @@ export default function App() {
   }, [applyRitual]);
 
   const completeGardenSession = useCallback(() => {
+    if (sessionPhase === 'closing' || sessionPhase === 'complete') return;
+
     const preset = MOOD_SESSION_PRESETS.find((entry) => entry.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
     const session: Ritual = activeGeneratedSession ?? {
       id: `session-${Date.now()}`,
@@ -2102,13 +2138,30 @@ export default function App() {
     };
 
     setSessionPhase('closing');
+    setSessionRemainingSeconds(0);
     setCompletedSession(session);
     stopFrequency();
     stopHaptic();
     strikeBell(SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === session.frequencyId)?.hz ?? 528);
     window.setTimeout(() => setSessionPhase('complete'), 4200);
     triggerHaptic([60, 30, 60]);
-  }, [activeGeneratedSession, selectedMoodId, stopFrequency, stopHaptic, strikeBell, triggerHaptic]);
+  }, [activeGeneratedSession, selectedMoodId, sessionPhase, stopFrequency, stopHaptic, strikeBell, triggerHaptic]);
+
+  useEffect(() => {
+    if (mode !== 'session' || sessionPhase !== 'running' || sessionRemainingSeconds <= 0) return;
+
+    const id = window.setInterval(() => {
+      setSessionRemainingSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [mode, sessionPhase, sessionRemainingSeconds]);
+
+  useEffect(() => {
+    if (mode === 'session' && sessionPhase === 'running' && sessionRemainingSeconds === 0) {
+      completeGardenSession();
+    }
+  }, [completeGardenSession, mode, sessionPhase, sessionRemainingSeconds]);
 
   const plantCompletedSession = useCallback(() => {
     const session = completedSession ?? activeGeneratedSession;
@@ -2127,6 +2180,7 @@ export default function App() {
     setActiveGeneratedSession(null);
     setCompletedSession(null);
     setSessionPhase('idle');
+    setSessionRemainingSeconds(0);
     setMode('garden');
   }, [activeGeneratedSession, completedSession]);
 
@@ -2134,6 +2188,7 @@ export default function App() {
     stopFrequency();
     stopHaptic();
     setSessionPhase('idle');
+    setSessionRemainingSeconds(0);
     if (isMicActive) {
       toggleMic();
     }
@@ -2145,6 +2200,13 @@ export default function App() {
     }
     triggerHaptic(10);
   }, [stopFrequency, stopHaptic, isMicActive, isAudioPlaying, isDroneActive, toggleMic, toggleAudioPlayback, toggleDrone]);
+
+  const stopSession = useCallback(() => {
+    stopAll();
+    setActiveGeneratedSession(null);
+    setCompletedSession(null);
+    setMode('home');
+  }, [stopAll]);
 
   const playHandPanNote = useCallback((freq: number) => {
     initAudio();
@@ -2241,10 +2303,11 @@ export default function App() {
       {/* Main Container */}
       <main className={cn(
         "glass premium-shell rounded-[36px] overflow-hidden flex flex-row transition-all duration-700 relative",
-        isZenMode ? "w-screen h-screen rounded-none fixed inset-0 z-50" : "w-full max-w-7xl h-[95vh] sm:h-[90vh] md:h-[820px] max-h-[960px]"
+        (isZenMode || mode === 'session') ? "w-screen h-screen rounded-none fixed inset-0 z-50" : "w-full max-w-7xl h-[95vh] sm:h-[90vh] md:h-[820px] max-h-[960px]"
       )}>
         
         {/* Sidebar Navigation */}
+        {mode !== 'session' && (
         <nav className={cn(
           "w-[86px] sm:w-20 bg-black/35 border-r border-white/10 flex flex-col items-center justify-start gap-2 sm:gap-4 p-2 sm:p-4 transition-all duration-500 overflow-y-auto overflow-x-visible no-scrollbar shrink-0",
           isZenMode && "opacity-0 pointer-events-none -translate-x-20"
@@ -2257,12 +2320,6 @@ export default function App() {
             onClick={() => setMode('home')} 
             icon={<Sparkles size={24} />} 
             label="Home" 
-          />
-          <NavButton 
-            active={mode === 'practice'} 
-            onClick={() => setMode('practice')} 
-            icon={<Zap size={24} />} 
-            label="Practice" 
           />
           <NavButton 
             active={mode === 'garden'} 
@@ -2290,13 +2347,14 @@ export default function App() {
              )}
           </div>
         </nav>
+        )}
 
         {/* Content Area */}
   <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
           
           {/* Immersive Background */}
           <AnimatePresence>
-            {((activeFreq && isPlaying) || isMicActive || isAudioPlaying || isReferencePlaying) && (
+            {mode !== 'session' && ((activeFreq && isPlaying) || isMicActive || isAudioPlaying || isReferencePlaying) && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -2320,6 +2378,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Header */}
+          {mode !== 'session' && (
           <header className={cn(
             "p-4 sm:p-6 border-b border-white/5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between transition-all duration-500 z-10",
             isZenMode && "opacity-0 pointer-events-none -translate-y-20"
@@ -2350,15 +2409,7 @@ export default function App() {
               {userProfile.preferredFrequencyId && (
                 <button 
                   onClick={() => {
-                    const freq = SOLFEGGIO_FREQUENCIES.find(f => f.id === userProfile.preferredFrequencyId);
-                    if (freq) {
-                      if (activeFreq?.id === freq.id && isPlaying) {
-                        stopFrequency();
-                      } else {
-                        playFrequency(freq);
-                      }
-                      triggerHaptic(20);
-                    }
+                    startQuickSession();
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
@@ -2459,6 +2510,7 @@ export default function App() {
               />
             </div>
           </header>
+          )}
 
           {/* Zen Mode Exit Button */}
           {isZenMode && (
@@ -2510,7 +2562,7 @@ export default function App() {
                     )}
                   </motion.div>
                 )}
-                {mode === 'practice' && activeFreq && isPlaying && (
+                {mode === 'session' && activeFreq && isPlaying && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -2528,7 +2580,8 @@ export default function App() {
           {/* Dynamic Content */}
           <div className={cn(
             "flex-1 overflow-y-auto p-6 custom-scrollbar transition-all duration-500",
-            isZenMode && "opacity-0 pointer-events-none"
+            mode === 'session' && "overflow-hidden p-0",
+            isZenMode && mode !== 'session' && "opacity-0 pointer-events-none"
           )}>
             <AnimatePresence mode="wait">
               {mode === 'home' && (
@@ -2548,210 +2601,32 @@ export default function App() {
                       const mood = MOOD_SESSION_PRESETS.find((preset) => preset.id === entry.moodId) ?? MOOD_SESSION_PRESETS[0];
                       launchMoodSession(mood.id);
                     }}
-                    onPractice={() => setMode('practice')}
+                    onPractice={() => {
+                      setStudioMode('guide');
+                      setMode('studio');
+                    }}
                   />
                 </motion.div>
               )}
 
-              {mode === 'practice' && (
-                <motion.div 
-                  key="freq"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
+              {mode === 'session' && (
+                <motion.div
+                  key="session"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
                 >
-                  <PracticeHub
-                    selectedMoodId={selectedMoodId}
-                    onSelectMood={setSelectedMoodId}
-                    onLaunchMoodSession={launchMoodSession}
-                    activeGeneratedSession={activeGeneratedSession}
-                    savedRituals={savedRituals}
-                    onLaunchRitual={applyRitual}
-                    onDeleteRitual={(ritualId) => setSavedRituals((current) => current.filter((ritual) => ritual.id !== ritualId))}
-                    gardenEntries={gardenEntries}
-                    onCompleteSession={completeGardenSession}
+                  <SessionView
+                    analyzer={analyzer}
+                    activeFreq={activeFreq}
+                    isPlaying={isPlaying}
+                    session={activeGeneratedSession}
                     sessionPhase={sessionPhase}
-                    completedSession={completedSession}
-                    onPlantSession={plantCompletedSession}
-                    onSkipSettle={() => setSessionPhase('running')}
+                    remainingSeconds={sessionRemainingSeconds}
+                    onStop={stopSession}
+                    onPlant={plantCompletedSession}
                   />
-
-                  {showStartHere && (
-                    <div className="mb-8 p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-white/6 to-app-accent/5 border border-white/10">
-                      <div className="flex items-start justify-between gap-4 mb-5">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-app-accent">
-                            <BookOpen size={16} />
-                            <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Start Here</span>
-                          </div>
-                          <h2 className="text-2xl font-serif italic">Choose your session intention</h2>
-                          <p className="text-xs sm:text-sm text-app-muted max-w-2xl leading-relaxed">
-                            Start with what you need right now. Pick one intention and Focus Flow will recommend the best first move instead of making you scan every tool.
-                          </p>
-                        </div>
-                        <button
-                          onClick={dismissStartHere}
-                          className="p-2 rounded-xl bg-white/5 border border-white/10 text-app-muted hover:text-white hover:bg-white/10 transition-colors"
-                          aria-label="Dismiss start guide"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {SESSION_INTENTION_PRESETS.map(({ id, label }) => (
-                          <button
-                            key={id}
-                            onClick={() => setSelectedSessionIntention(id)}
-                            className={cn(
-                              "px-4 py-2 rounded-full border text-[10px] font-mono uppercase tracking-widest transition-colors",
-                              selectedSessionIntention === id
-                                ? "bg-app-accent text-black border-app-accent"
-                                : "bg-white/5 border-white/10 text-app-muted hover:bg-white/10 hover:text-white"
-                            )}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {(() => {
-                        const activePreset = SESSION_INTENTION_PRESETS.find((preset) => preset.id === selectedSessionIntention) ?? SESSION_INTENTION_PRESETS[0];
-                        const PresetIcon = activePreset.icon;
-
-                        return (
-                          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)] gap-4">
-                            <div className="p-4 rounded-2xl bg-black/30 border border-white/10">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
-                                  <PresetIcon size={18} className={activePreset.iconClassName} />
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Recommended first move</p>
-                                  <h3 className="text-lg font-serif italic">{activePreset.label}</h3>
-                                </div>
-                              </div>
-                              <p className="text-sm text-white/80 leading-relaxed mb-3">{activePreset.prompt}</p>
-                              <p className="text-xs text-app-muted leading-relaxed">{activePreset.recommendation}</p>
-                            </div>
-
-                            <div className="p-4 rounded-2xl bg-app-accent/10 border border-app-accent/20 flex flex-col gap-3 justify-between">
-                              <div>
-                                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold mb-2">Recommended</p>
-                                <p className="text-xs text-app-muted leading-relaxed">
-                                  Focus Flow will take you straight into the matching mode so you can start instead of deciding between menus.
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => launchSessionIntention(activePreset.id)}
-                                className="w-full text-left p-4 rounded-2xl bg-app-accent text-black hover:brightness-105 transition-colors"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div>
-                                    <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-1">{activePreset.actionLabel}</h3>
-                                    <p className="text-xs text-black/70 leading-relaxed">Open the recommended tool now.</p>
-                                  </div>
-                                  <ChevronRight size={18} />
-                                </div>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
-                        <button
-                          onClick={startQuickSession}
-                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                        >
-                          <Zap size={16} className="text-app-accent mb-3" />
-                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Quick Session</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Skip the recommendation and start your preferred tone immediately.</p>
-                        </button>
-
-                        <button
-                          onClick={() => openModeFromStartHere('guide')}
-                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                        >
-                          <HelpCircle size={16} className="text-amber-400 mb-3" />
-                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Learn The Tools</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Read the guide first if you want the app explained before you begin.</p>
-                        </button>
-
-                        <button
-                          onClick={() => openModeFromStartHere('profile')}
-                          className="text-left p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
-                        >
-                          <User size={16} className="text-blue-400 mb-3" />
-                          <h3 className="text-sm font-mono uppercase tracking-widest font-bold mb-2">Tune Your Defaults</h3>
-                          <p className="text-xs text-app-muted leading-relaxed">Adjust your preferred frequency, timer length, and screen behavior.</p>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {userProfile.preferredFrequencyId && (
-                      <div className="col-span-full mb-2">
-                        <div className="flex items-center gap-2 mb-4">
-                          <Star size={14} className="text-app-accent fill-app-accent/20" />
-                          <h2 className="text-[10px] font-mono uppercase tracking-widest text-app-accent/80 font-bold">Your Preferred Frequency</h2>
-                          <div className="h-px flex-1 bg-app-accent/10" />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {SOLFEGGIO_FREQUENCIES.filter(f => f.id === userProfile.preferredFrequencyId).map((f) => (
-                            <FrequencyCard 
-                              key={`pref-${f.id}`}
-                              freq={f}
-                              isActive={activeFreq?.id === f.id && isPlaying}
-                              isPreferred={true}
-                              onSetPreferred={() => {}}
-                              onClick={() => {
-                                if (activeFreq?.id === f.id && isPlaying) {
-                                  stopFrequency();
-                                } else {
-                                  playFrequency(f);
-                                }
-                                triggerHaptic(20);
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 mt-8 mb-4">
-                          <LayoutGrid size={14} className="text-app-muted" />
-                          <h2 className="text-[10px] font-mono uppercase tracking-widest text-app-muted font-bold">All Frequencies</h2>
-                          <div className="h-px flex-1 bg-white/5" />
-                        </div>
-                      </div>
-                    )}
-                    {SOLFEGGIO_FREQUENCIES.map((f) => (
-                      <FrequencyCard 
-                        key={f.id}
-                        freq={f}
-                        isActive={activeFreq?.id === f.id && isPlaying}
-                        isPreferred={userProfile.preferredFrequencyId === f.id}
-                        onSetPreferred={() => {
-                          setUserProfile({ ...userProfile, preferredFrequencyId: f.id });
-                          triggerHaptic([30, 50]);
-                        }}
-                        onClick={() => {
-                          if (activeFreq?.id === f.id && isPlaying) {
-                            stopFrequency();
-                          } else {
-                            playFrequency(f);
-                          }
-                          triggerHaptic(20);
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="col-span-full mt-4 p-4 rounded-2xl bg-app-accent/5 border border-app-accent/10 flex items-start gap-3">
-                    <Info size={16} className="text-app-accent shrink-0 mt-0.5" />
-                    <div className="text-[10px] sm:text-xs text-app-muted leading-relaxed">
-                      <p className="font-bold text-app-accent mb-1 uppercase tracking-widest">Background Play Enabled</p>
-                      <p>Focus Flow uses the Media Session API to keep audio active when your phone is locked or in the background. For uninterrupted sessions, enable **"Keep Screen On"** in your profile settings.</p>
-                    </div>
-                  </div>
                 </motion.div>
               )}
 
@@ -2862,6 +2737,7 @@ export default function App() {
           </div>
 
           {/* Footer Status */}
+          {mode !== 'session' && (
           <footer className={cn(
             "p-4 bg-black/20 border-t border-white/5 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-app-muted transition-all duration-500",
             isZenMode && "opacity-0 pointer-events-none translate-y-20"
@@ -2871,10 +2747,12 @@ export default function App() {
               {isPlaying ? `${activeFreq?.hz}Hz playing` : activeHaptic ? activeHaptic.label : ''}
             </div>
           </footer>
+          )}
         </div>
       </main>
 
       {/* Info Tooltip */}
+      {mode !== 'session' && (
       <div className={cn(
         "mt-8 max-w-3xl text-app-muted text-xs flex items-start gap-2 opacity-55 hover:opacity-100 transition-all duration-500",
         isZenMode && "opacity-0 pointer-events-none"
@@ -2882,11 +2760,141 @@ export default function App() {
         <Info size={14} className="mt-0.5 shrink-0" />
         <span>Focus Flow is a tool for rest and attention. It is not medical advice and it does not treat, diagnose, or cure anything. If you have a seizure disorder, a pacemaker, or a hearing condition, check with a clinician first. If anything here makes you feel unwell, stop.</span>
       </div>
+      )}
     </div>
   );
 }
 
 // --- Sub-Components ---
+
+function SessionView({
+  analyzer,
+  activeFreq,
+  isPlaying,
+  session,
+  sessionPhase,
+  remainingSeconds,
+  onStop,
+  onPlant
+}: {
+  analyzer: React.RefObject<AnalyserNode | null>;
+  activeFreq: Frequency | null;
+  isPlaying: boolean;
+  session: Ritual | null;
+  sessionPhase: SessionPhase;
+  remainingSeconds: number;
+  onStop: () => void;
+  onPlant: () => void;
+}) {
+  const [lastInteraction, setLastInteraction] = useState(Date.now());
+  const [now, setNow] = useState(Date.now());
+  const totalSeconds = Math.max(1, (session?.minutes ?? 1) * 60);
+  const progress = sessionPhase === 'complete' ? 1 : Math.min(1, Math.max(0, 1 - remainingSeconds / totalSeconds));
+  const radius = 148;
+  const circumference = 2 * Math.PI * radius;
+  const controlsVisible = sessionPhase !== 'running' || now - lastInteraction < 10000;
+  const frequencyColor = activeFreq?.color ?? '#4F8F7A';
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const showControls = () => {
+    setLastInteraction(Date.now());
+    setNow(Date.now());
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${minutes}:${String(remainder).padStart(2, '0')}`;
+  };
+
+  return (
+    <section
+      className="relative h-full min-h-screen overflow-hidden bg-[#141C19]"
+      onPointerDown={showControls}
+      onPointerMove={showControls}
+      onKeyDown={showControls}
+      tabIndex={-1}
+    >
+      <div
+        className="absolute inset-0 opacity-70"
+        style={{
+          background: `radial-gradient(circle at 50% 42%, ${frequencyColor}24 0%, transparent 54%), linear-gradient(180deg, #17231f 0%, #101613 100%)`
+        }}
+      />
+
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="relative w-[min(78vw,540px)] aspect-square">
+          <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 360 360" aria-hidden="true">
+            <circle cx="180" cy="180" r={radius} fill="none" stroke="rgba(232,239,235,0.08)" strokeWidth="2" />
+            <circle
+              cx="180"
+              cy="180"
+              r={radius}
+              fill="none"
+              stroke={sessionPhase === 'complete' ? '#C59B54' : frequencyColor}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - progress)}
+              className="transition-[stroke-dashoffset,stroke] duration-700 ease-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <SacredGeometry
+              analyzer={analyzer}
+              activeColor={frequencyColor}
+              tappingPointIndex={0}
+              isTappingMode={false}
+            />
+            <BreathingGuide isPlaying={isPlaying && sessionPhase !== 'complete'} />
+          </div>
+        </div>
+      </div>
+
+      <motion.div
+        animate={{ opacity: controlsVisible ? 1 : 0 }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 flex h-full min-h-screen flex-col items-center justify-end px-6 pb-12 text-center"
+      >
+        <div className="mb-8 max-w-md">
+          <h1 className="text-3xl sm:text-5xl font-serif italic leading-tight">
+            {sessionPhase === 'complete' ? 'Bloom ready.' : session?.name ?? activeFreq?.label ?? 'Session'}
+          </h1>
+          <p className="mt-3 text-sm text-app-muted">
+            {sessionPhase === 'settling'
+              ? 'Begin with an exhale.'
+              : sessionPhase === 'closing'
+                ? 'Listen for the bell.'
+                : sessionPhase === 'complete'
+                  ? 'You finished the session.'
+                  : formatTime(remainingSeconds)}
+          </p>
+        </div>
+
+        {sessionPhase === 'complete' ? (
+          <button
+            onClick={onPlant}
+            className="rounded-full bg-app-gold px-7 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-black premium-button"
+          >
+            Plant bloom
+          </button>
+        ) : (
+          <button
+            onClick={onStop}
+            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-white/8 text-white transition-colors hover:bg-white/14"
+            aria-label="Stop session"
+          >
+            <span className="h-4 w-4 rounded-[3px] bg-current" />
+          </button>
+        )}
+      </motion.div>
+    </section>
+  );
+}
 
 function HomeView({
   selectedMoodId,
@@ -2907,11 +2915,13 @@ function HomeView({
 }) {
   const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
   const haptic = HAPTIC_PATTERNS.find((score) => score.id === selectedMood.hapticId);
+  const frequency = SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === selectedMood.frequencyId);
+  const chant = selectedMood.chantId ? SONIC_CHANTS.find((entry) => entry.id === selectedMood.chantId) : null;
+  const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <section className="max-w-4xl mx-auto py-8 sm:py-14">
+    <section className="max-w-3xl mx-auto py-8 sm:py-14">
       <div className="text-center mb-8">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent mb-3">Focus Flow</p>
         <h2 className="text-4xl sm:text-6xl font-serif italic leading-none">How are you arriving?</h2>
       </div>
 
@@ -2932,18 +2942,18 @@ function HomeView({
                 background: selected ? `linear-gradient(135deg, ${color}, ${color}66)` : undefined
               }}
             >
-              <span className="text-sm font-medium">{mood.label}</span>
-              <p className="text-[10px] text-current/70 leading-tight mt-2">{mood.feeling}</p>
+              <span className="text-base font-medium">{mood.label}</span>
             </button>
           );
         })}
       </div>
 
       <div className="premium-card rounded-[32px] p-6 sm:p-8 mb-5">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="relative z-10 flex flex-col items-center text-center gap-5">
           <div>
             <h3 className="text-3xl font-serif italic">{selectedMood.sessionName}</h3>
-            <p className="text-sm text-app-muted mt-2">{selectedMood.minutes} minutes · {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
+            <p className="text-sm text-app-muted mt-3">{selectedMood.feeling}</p>
+            <p className="text-sm text-app-muted mt-2">{selectedMood.minutes} minutes, {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
           </div>
           <button
             onClick={() => onBegin(selectedMood.id)}
@@ -2951,6 +2961,35 @@ function HomeView({
           >
             Begin
           </button>
+          <button
+            onClick={() => setShowDetails((current) => !current)}
+            className="text-xs text-app-muted underline-offset-4 hover:text-white hover:underline"
+          >
+            Details
+          </button>
+          <AnimatePresence>
+            {showDetails && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="grid w-full grid-cols-3 gap-2 overflow-hidden text-left"
+              >
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[10px] text-app-muted">Tone</p>
+                  <p className="mt-1 text-sm">{frequency?.hz}Hz</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[10px] text-app-muted">Pulse</p>
+                  <p className="mt-1 truncate text-sm">{haptic?.label}</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[10px] text-app-muted">Guide</p>
+                  <p className="mt-1 text-sm">{chant?.sound ?? 'Silent'}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -3191,267 +3230,6 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
         active ? "opacity-100" : "opacity-60"
       )}>{label}</span>
     </button>
-  );
-}
-
-function PracticeHub({
-  selectedMoodId,
-  onSelectMood,
-  onLaunchMoodSession,
-  activeGeneratedSession,
-  savedRituals,
-  onLaunchRitual,
-  onDeleteRitual,
-  gardenEntries,
-  onCompleteSession,
-  sessionPhase,
-  completedSession,
-  onPlantSession,
-  onSkipSettle
-}: {
-  selectedMoodId: MoodId,
-  onSelectMood: (moodId: MoodId) => void,
-  onLaunchMoodSession: (moodId: MoodId) => void,
-  activeGeneratedSession: Ritual | null,
-  savedRituals: Ritual[],
-  onLaunchRitual: (ritual: Ritual) => void,
-  onDeleteRitual: (ritualId: string) => void,
-  gardenEntries: GardenEntry[],
-  onCompleteSession: () => void,
-  sessionPhase: SessionPhase,
-  completedSession: Ritual | null,
-  onPlantSession: () => void,
-  onSkipSettle: () => void
-}) {
-  const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
-  const totalMinutes = gardenEntries.reduce((sum, entry) => sum + entry.minutes, 0);
-  const lastSevenEntries = gardenEntries.slice(0, 7);
-  const activeSessionName = activeGeneratedSession?.name ?? selectedMood.sessionName;
-  const isSessionActive = Boolean(activeGeneratedSession);
-
-  const describeRitual = (ritual: Pick<Ritual, 'frequencyId' | 'hapticId' | 'minutes' | 'chantId'>) => {
-    const frequency = SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === ritual.frequencyId);
-    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === ritual.hapticId);
-    const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
-
-    return [
-      frequency ? `${frequency.hz}Hz` : null,
-      haptic?.label,
-      chant?.sound,
-      `${ritual.minutes} min`
-    ].filter(Boolean).join(' / ');
-  };
-
-  return (
-    <section className="mb-8 grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-4">
-      <div className="premium-card zen-arrival p-4 sm:p-6 rounded-[32px]">
-        <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 mb-5">
-          <div className="zen-arrival-copy">
-            <div className="flex items-center gap-2 text-app-accent mb-3">
-              <Sparkles size={16} />
-              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Begin here</span>
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-serif italic leading-tight max-w-3xl">Begin with an exhale.</h2>
-            <p className="text-sm sm:text-base text-app-muted leading-relaxed mt-3 max-w-2xl">
-              Choose what you want to feel. Focus Flow starts the tone, pulse, and guide for you.
-            </p>
-          </div>
-
-          <div className="zen-current-session">
-            <span className="zen-current-kicker">{isSessionActive ? 'Now playing' : 'Recommended'}</span>
-            <strong>{activeSessionName}</strong>
-            <p>{selectedMood.summary}</p>
-            <div className="zen-current-meta">
-              <span>{SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === selectedMood.frequencyId)?.hz}Hz</span>
-              <span>{selectedMood.minutes} min</span>
-              <span>{selectedMood.chantId ? SONIC_CHANTS.find((entry) => entry.id === selectedMood.chantId)?.sound : 'Silent'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">How do you want to feel?</p>
-            <p className="text-xs text-app-muted mt-1">
-              {sessionPhase === 'settling' ? 'Settling in.' : sessionPhase === 'closing' ? 'Listen for the bell.' : 'Tap the closest feeling. The session changes around you.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {sessionPhase === 'settling' && (
-              <button
-                onClick={onSkipSettle}
-                className="shrink-0 px-4 py-3 rounded-full border border-white/10 text-app-muted hover:text-white hover:bg-white/5 transition-colors font-mono text-[10px] uppercase tracking-widest"
-              >
-                Skip
-              </button>
-            )}
-            <button
-              onClick={() => onLaunchMoodSession(selectedMood.id)}
-              className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-app-accent text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
-            >
-              <Play size={14} fill="currentColor" />
-              Start My Reset
-            </button>
-          </div>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
-          {MOOD_SESSION_PRESETS.map((mood) => (
-            <button
-              key={mood.id}
-              onClick={() => onSelectMood(mood.id)}
-              className={cn(
-                "zen-mood-card min-h-[112px] text-left p-3 rounded-2xl border transition-all relative overflow-hidden",
-                selectedMoodId === mood.id
-                  ? "is-selected text-white shadow-[0_18px_34px_rgba(79,143,122,0.18)]"
-                  : "bg-black/25 border-white/10 text-white hover:bg-white/8 hover:border-white/20"
-              )}
-              style={selectedMoodId === mood.id ? { backgroundColor: moodColor(mood), borderColor: moodColor(mood) } : undefined}
-            >
-              <div className={cn(
-                "absolute right-3 top-3 w-8 h-8 rounded-full border transition-opacity",
-                selectedMoodId === mood.id ? "border-white/35 bg-white/20" : "border-white/10 bg-white/5"
-              )} />
-              <span className="text-xs font-mono uppercase tracking-widest font-bold" style={selectedMoodId === mood.id ? undefined : { color: moodColor(mood) }}>
-                {mood.label}
-              </span>
-              <p className={cn("text-[10px] leading-tight mt-2", selectedMoodId === mood.id ? "text-white/80" : "text-app-muted")}>
-                {mood.feeling}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4">
-          <div className="zen-ritual-preview p-4 rounded-2xl bg-black/35 border border-white/10 relative overflow-hidden">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Your reset</p>
-                <h3 className="text-xl font-serif italic mt-1">{selectedMood.sessionName}</h3>
-              </div>
-              <span className="px-2 py-1 rounded-full bg-white/5 text-[9px] font-mono uppercase tracking-widest text-app-muted">
-                {selectedMood.minutes} min
-              </span>
-            </div>
-            <p className="text-sm text-white/75 leading-relaxed mt-3">{selectedMood.summary}</p>
-            <p className="text-[10px] text-app-muted font-mono uppercase tracking-widest mt-4">
-              {describeRitual(selectedMood)}
-            </p>
-            <div className="premium-divider mt-4" />
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Tone</p>
-                <p className="text-xs text-white mt-1">{SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === selectedMood.frequencyId)?.hz}Hz</p>
-              </div>
-              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Pulse</p>
-                <p className="text-xs text-white mt-1 truncate">{HAPTIC_PATTERNS.find((entry) => entry.id === selectedMood.hapticId)?.label}</p>
-              </div>
-              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">Guide</p>
-                <p className="text-xs text-white mt-1">{selectedMood.chantId ? SONIC_CHANTS.find((entry) => entry.id === selectedMood.chantId)?.sound : 'Silent'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="zen-studio p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3 justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Progress Garden</p>
-              <h3 className="text-lg font-serif italic">{sessionPhase === 'complete' ? 'Plant it' : 'Bloom when you finish'}</h3>
-              <p className="text-xs text-app-muted leading-relaxed mt-2">
-                {sessionPhase === 'complete' && completedSession
-                  ? `You gave yourself ${completedSession.minutes} minutes.`
-                  : 'Complete the reset, hear the bell, then plant it in your garden.'}
-              </p>
-            </div>
-            <button
-              onClick={sessionPhase === 'complete' ? onPlantSession : onCompleteSession}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-emerald-300 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
-            >
-              <CheckCircle2 size={13} />
-              {sessionPhase === 'complete' ? 'Plant it' : 'Close session'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        <div className="premium-card p-4 rounded-[28px]">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Library</p>
-              <h3 className="text-xl font-serif italic">Saved flows</h3>
-            </div>
-            <span className="text-[10px] font-mono text-app-accent">{savedRituals.length}/12</span>
-          </div>
-
-          {savedRituals.length === 0 ? (
-            <p className="text-xs text-app-muted leading-relaxed p-4 rounded-2xl bg-black/20 border border-white/5">
-              Saved resets appear here when you keep a favorite.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
-              {savedRituals.map((ritual) => (
-                <div key={ritual.id} className="flex items-center gap-2 p-3 rounded-2xl bg-black/20 border border-white/5">
-                  <button
-                    onClick={() => onLaunchRitual(ritual)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <p className="truncate text-sm font-medium">{ritual.name}</p>
-                    <p className="truncate text-[9px] font-mono uppercase tracking-widest text-app-muted mt-1">{describeRitual(ritual)}</p>
-                  </button>
-                  <button
-                    onClick={() => onDeleteRitual(ritual.id)}
-                    className="p-2 rounded-xl text-app-muted hover:text-red-300 hover:bg-red-500/10 transition-colors"
-                    title="Delete ritual"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="premium-card p-4 rounded-[28px]">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-emerald-300">Progress Garden</p>
-              <h3 className="text-xl font-serif italic">Your blooms</h3>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-mono text-emerald-300">{gardenEntries.length}</p>
-              <p className="text-[8px] font-mono uppercase tracking-widest text-app-muted">{totalMinutes} min</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2 mb-3">
-            {Array.from({ length: 7 }).map((_, index) => {
-              const entry = lastSevenEntries[index];
-              const mood = entry ? MOOD_SESSION_PRESETS.find((item) => item.id === entry.moodId) : null;
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "aspect-square rounded-full border flex items-center justify-center text-[10px] font-mono transition-all relative",
-                    entry
-                      ? "garden-bloom text-black border-emerald-200"
-                      : "bg-black/20 border-white/10 text-white/20"
-                  )}
-                  title={entry ? `${entry.ritualName} / ${entry.minutes} min` : 'Empty garden space'}
-                >
-                  {entry ? <Flower2 size={18} strokeWidth={1.8} aria-hidden="true" /> : ''}
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="text-[10px] text-app-muted leading-relaxed">
-            Complete generated sessions to grow a visible trail of practice. Each bloom records the ritual, mood, minutes, and tone.
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -4499,24 +4277,24 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: `A commonly used modern wellness tone set: 174, 285, 396, 417, 528, 639, 741, 852, and 963Hz. These are intentional listening tones, not ${TUNING_STANDARD} note names or medical treatments.`,
       icon: Sparkles,
       iconClassName: 'text-app-accent',
-      mode: 'practice',
-      cta: 'Open Frequencies'
+      mode: 'home',
+      cta: 'Choose a session'
     },
     {
       title: 'Earth Hum',
       description: `Often called the "Earth's Heartbeat," ${SCHUMANN_RESONANCE_HZ}Hz is the common rounded reference for the fundamental Schumann resonance. In Focus Flow it is used as a low grounding anchor.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
-      mode: 'practice',
-      cta: 'Open Grounding Tones'
+      mode: 'home',
+      cta: 'Choose grounding'
     },
     {
       title: 'Depth Mode',
       description: 'When active, the app offsets the left and right carriers by 6Hz around the selected tone. Headphones are recommended for binaural perception; the displayed Hz remains the carrier center.',
       icon: Brain,
       iconClassName: 'text-blue-400',
-      mode: 'practice',
-      cta: 'Open Frequencies'
+      mode: 'home',
+      cta: 'Choose a session'
     },
     {
       title: 'EFT Tapping',
@@ -4531,24 +4309,24 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'The visualizer uses real-time audio analysis to generate sacred geometry patterns. These visuals are designed to be hypnotic and calming, helping to anchor your focus and facilitate a flow state through visual-auditory synchronization.',
       icon: Eye,
       iconClassName: 'text-purple-400',
-      mode: 'practice',
-      cta: 'Open Visualizer'
+      mode: 'home',
+      cta: 'Choose a session'
     },
     {
       title: 'Zen Mode',
       description: 'Zen Mode removes all interface elements except the core experience. It is designed for deep work or meditation where you want zero distractions. Simply click the icon in the header to enter, and the "minimize" icon to exit.',
       icon: Maximize2,
       iconClassName: 'text-white',
-      mode: 'practice',
-      cta: 'Open Focus View'
+      mode: 'home',
+      cta: 'Choose a session'
     },
     {
       title: 'Haptic Feedback',
       description: 'On mobile devices, haptics provide physical pulses to guide breathing or grounding. On desktop, low-frequency audio pulses simulate the pattern as a rhythmic practice anchor.',
       icon: Zap,
       iconClassName: 'text-app-accent',
-      mode: 'practice',
-      cta: 'Open Practice'
+      mode: 'home',
+      cta: 'Choose a session'
     },
     {
       title: 'Sonic Vocalizations',
@@ -4596,7 +4374,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             <p className="text-xs text-app-muted leading-relaxed">Open tapping for a guided body-based reset.</p>
           </button>
           <button
-            onClick={() => onOpenMode('practice')}
+            onClick={onStartQuickSession}
             className="text-left p-4 rounded-2xl bg-black/30 border border-white/10 hover:bg-black/40 transition-colors"
           >
             <Timer size={16} className="text-blue-400 mb-3" />
