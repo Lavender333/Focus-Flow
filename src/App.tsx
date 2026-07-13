@@ -2663,9 +2663,8 @@ export default function App() {
           )}>
             <div className="flex items-center gap-2">
               <div className={cn("w-1.5 h-1.5 rounded-full", (isPlaying || activeHaptic) ? "bg-app-accent animate-pulse" : "bg-white/20")} />
-              {isPlaying ? `Audio: ${activeFreq?.hz}Hz` : activeHaptic ? `Haptic: ${activeHaptic.label}` : 'Engine Idle'}
+              {isPlaying ? `${activeFreq?.hz}Hz playing` : activeHaptic ? activeHaptic.label : ''}
             </div>
-            <div>v1.0.0 // Flow State Optimized</div>
           </footer>
         </div>
       </main>
@@ -2761,11 +2760,6 @@ function PracticeHub({
             <p className="text-sm sm:text-base text-app-muted leading-relaxed mt-3 max-w-2xl">
               Choose what you want to feel. Focus Flow starts the tone, pulse, and guide for you.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="zen-chip">one tap</span>
-              <span className="zen-chip">no setup</span>
-              <span className="zen-chip">bloom after</span>
-            </div>
           </div>
 
           <div className="zen-current-session">
@@ -2883,7 +2877,7 @@ function PracticeHub({
 
           {savedRituals.length === 0 ? (
             <p className="text-xs text-app-muted leading-relaxed p-4 rounded-2xl bg-black/20 border border-white/5">
-              Save a generated or current mix to make it replayable in one tap.
+              Saved resets appear here when you keep a favorite.
             </p>
           ) : (
             <div className="flex flex-col gap-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
