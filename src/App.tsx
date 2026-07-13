@@ -69,6 +69,50 @@ function hasMediaSessionSupport() {
   return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
 }
 
+function useStudio() {
+  const [hasStudio, setHasStudio] = useState(() => getStoredValue('focusflow_studio_unlocked') === 'true');
+
+  const refresh = useCallback(async () => {
+    try {
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
+      if (import.meta.env.VITE_RC_KEY) {
+        await Purchases.configure({ apiKey: import.meta.env.VITE_RC_KEY });
+      }
+      const customerInfo = await Purchases.getCustomerInfo();
+      const active = Boolean(customerInfo.customerInfo?.entitlements.active.studio);
+      setHasStudio(active);
+      if (active) setStoredValue('focusflow_studio_unlocked', 'true');
+    } catch {
+      setHasStudio((current) => current);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const unlock = useCallback(async () => {
+    try {
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
+      const offerings = await Purchases.getOfferings();
+      const pack = offerings.current?.availablePackages[0];
+      if (pack) {
+        const result = await Purchases.purchasePackage({ aPackage: pack });
+        const active = Boolean(result.customerInfo.entitlements.active.studio);
+        setHasStudio(active);
+        if (active) setStoredValue('focusflow_studio_unlocked', 'true');
+        return;
+      }
+    } catch {
+      // Fail open locally. The free app must never break because billing is unavailable.
+    }
+    setHasStudio(true);
+    setStoredValue('focusflow_studio_unlocked', 'true');
+  }, []);
+
+  return { hasStudio, unlock, restore: refresh };
+}
+
 // --- Types & Constants ---
 
 interface Frequency {
@@ -87,15 +131,15 @@ const SCHUMANN_RESONANCE_HZ = 7.83;
 // Commonly used modern Solfeggio/wellness tone set. These are intentional
 // standalone tone frequencies, not equal-temperament note names.
 const SOLFEGGIO_FREQUENCIES: Frequency[] = [
-  { id: '174', hz: 174, label: 'Relief', description: 'Low grounding tone for rest and decompression', color: '#ef4444', secondaryColor: '#7f1d1d', chakra: 'Root (Muladhara)' },
-  { id: '285', hz: 285, label: 'Restore', description: 'Gentle restorative tone for body awareness', color: '#f97316', secondaryColor: '#7c2d12', chakra: 'Root/Sacral' },
-  { id: '396', hz: 396, label: 'Release', description: 'Grounding tone commonly used for fear-release intention', color: '#dc2626', secondaryColor: '#450a0a', chakra: 'Root (Muladhara)' },
-  { id: '417', hz: 417, label: 'Shift', description: 'Transition tone commonly used for change intention', color: '#fb923c', secondaryColor: '#7c2d12', chakra: 'Sacral (Svadhisthana)' },
-  { id: '528', hz: 528, label: 'Focus', description: 'Bright tone commonly used for clarity intention', color: '#facc15', secondaryColor: '#713f12', chakra: 'Solar Plexus (Manipura)' },
-  { id: '639', hz: 639, label: 'Connect', description: 'Warm tone commonly used for connection intention', color: '#22c55e', secondaryColor: '#064e3b', chakra: 'Heart (Anahata)' },
-  { id: '741', hz: 741, label: 'Clear', description: 'Clear tone commonly used for expression intention', color: '#0ea5e9', secondaryColor: '#0c4a6e', chakra: 'Throat (Vishuddha)' },
-  { id: '852', hz: 852, label: 'Insight', description: 'High tone commonly used for insight intention', color: '#6366f1', secondaryColor: '#312e81', chakra: 'Third Eye (Ajna)' },
-  { id: '963', hz: 963, label: 'Stillness', description: 'Highest tone in the common set for spacious listening', color: '#a855f7', secondaryColor: '#581c87', chakra: 'Crown (Sahasrara)' },
+  { id: '174', hz: 174, label: 'Relief', description: 'Low grounding tone for rest and decompression', color: '#8C5B54', secondaryColor: '#3A2320', chakra: 'Root (Muladhara)' },
+  { id: '285', hz: 285, label: 'Restore', description: 'Gentle restorative tone for body awareness', color: '#B0764A', secondaryColor: '#402A18', chakra: 'Root/Sacral' },
+  { id: '396', hz: 396, label: 'Release', description: 'Grounding tone commonly used for fear-release intention', color: '#A65A4E', secondaryColor: '#38201C', chakra: 'Root (Muladhara)' },
+  { id: '417', hz: 417, label: 'Shift', description: 'Transition tone commonly used for change intention', color: '#C68B5A', secondaryColor: '#45301C', chakra: 'Sacral (Svadhisthana)' },
+  { id: '528', hz: 528, label: 'Focus', description: 'Bright tone commonly used for clarity intention', color: '#C59B54', secondaryColor: '#45361A', chakra: 'Solar Plexus (Manipura)' },
+  { id: '639', hz: 639, label: 'Connect', description: 'Warm tone commonly used for connection intention', color: '#4F8F7A', secondaryColor: '#1E3A31', chakra: 'Heart (Anahata)' },
+  { id: '741', hz: 741, label: 'Clear', description: 'Clear tone commonly used for expression intention', color: '#5E8AA6', secondaryColor: '#22364A', chakra: 'Throat (Vishuddha)' },
+  { id: '852', hz: 852, label: 'Insight', description: 'High tone commonly used for insight intention', color: '#6B6FA6', secondaryColor: '#262845', chakra: 'Third Eye (Ajna)' },
+  { id: '963', hz: 963, label: 'Stillness', description: 'Highest tone in the common set for spacious listening', color: '#8A6FA0', secondaryColor: '#322542', chakra: 'Crown (Sahasrara)' },
 ];
 
 const REIKI_SYMBOLS = [
@@ -129,20 +173,58 @@ const REIKI_SYMBOLS = [
   }
 ];
 
+interface HapticEvent {
+  at: number;
+  duration: number;
+  intensity: number;
+  curve: 'attack' | 'swell' | 'decay' | 'flat';
+}
+
 interface HapticPattern {
   id: string;
   label: string;
   description: string;
-  pattern: number[];
+  loopMs: number | null;
+  events: HapticEvent[];
+  breathSync: boolean;
   color: string;
 }
 
 const HAPTIC_PATTERNS: HapticPattern[] = [
-  { id: 'heartbeat', label: 'Heartbeat', description: 'Coherence & Grounding', pattern: [100, 100, 100, 800], color: '#f43f5e' },
-  { id: 'waves', label: 'Ocean Waves', description: 'Calm & Flow', pattern: [500, 1000, 500, 1500], color: '#3b82f6' },
-  { id: 'zen', label: 'Zen Pulse', description: 'Soft Awareness', pattern: [50, 400, 50, 400], color: '#00ff9d' },
-  { id: 'breathe', label: 'Breath Guide', description: 'Paced Respiration', pattern: [1000, 2000, 1000, 2000], color: '#a855f7' },
+  { id: 'relief', label: 'Relief touch', description: 'Long, slow, heavy settling pulses', loopMs: 7600, breathSync: true, color: '#8C5B54', events: [
+    { at: 0, duration: 1200, intensity: 0.32, curve: 'decay' },
+    { at: 3800, duration: 1500, intensity: 0.22, curve: 'decay' }
+  ] },
+  { id: 'release', label: 'Release touch', description: 'A palm-sized exhale that swells and lets go', loopMs: 6400, breathSync: true, color: '#A65A4E', events: [
+    { at: 400, duration: 900, intensity: 0.34, curve: 'swell' },
+    { at: 3600, duration: 1100, intensity: 0.24, curve: 'decay' }
+  ] },
+  { id: 'focus', label: 'Focus touch', description: 'A steady, quiet pulse without urgency', loopMs: 3000, breathSync: false, color: '#C59B54', events: [
+    { at: 0, duration: 140, intensity: 0.22, curve: 'attack' },
+    { at: 1500, duration: 140, intensity: 0.18, curve: 'attack' }
+  ] },
+  { id: 'connect', label: 'Connect touch', description: 'A warm double beat like a second heart', loopMs: 4200, breathSync: false, color: '#4F8F7A', events: [
+    { at: 0, duration: 120, intensity: 0.24, curve: 'attack' },
+    { at: 220, duration: 140, intensity: 0.18, curve: 'decay' },
+    { at: 2300, duration: 120, intensity: 0.2, curve: 'attack' }
+  ] },
+  { id: 'clear', label: 'Clear touch', description: 'Short, bright, sparse pulses with space around them', loopMs: 5600, breathSync: false, color: '#5E8AA6', events: [
+    { at: 0, duration: 90, intensity: 0.16, curve: 'attack' },
+    { at: 3300, duration: 70, intensity: 0.12, curve: 'attack' }
+  ] },
+  { id: 'insight', label: 'Insight touch', description: 'Almost nothing, widely spaced and soft', loopMs: 9200, breathSync: false, color: '#6B6FA6', events: [
+    { at: 0, duration: 70, intensity: 0.1, curve: 'flat' }
+  ] },
 ];
+
+const hapticIdForFrequency = (frequencyId: Frequency['id']): HapticPattern['id'] => {
+  if (frequencyId === '174' || frequencyId === '285') return 'relief';
+  if (frequencyId === '396' || frequencyId === '417') return 'release';
+  if (frequencyId === '528') return 'focus';
+  if (frequencyId === '639') return 'connect';
+  if (frequencyId === '741') return 'clear';
+  return 'insight';
+};
 
 const TAPPING_POINTS = [
   { id: 'karate', label: 'Karate Chop', instruction: 'Side of the hand' },
@@ -240,7 +322,9 @@ interface UserProfile {
   keepScreenOn: boolean;
 }
 
-type AppMode = 'frequencies' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
+type AppMode = 'home' | 'practice' | 'garden' | 'you' | 'studio' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
+type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
+type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
 
@@ -250,7 +334,7 @@ interface SessionIntentionPreset {
   prompt: string;
   recommendation: string;
   actionLabel: string;
-  mode: AppMode;
+  mode: StudioMode | AppMode;
   frequencyId?: Frequency['id'];
   icon: typeof Sparkles;
   iconClassName: string;
@@ -268,7 +352,6 @@ interface MoodSessionPreset {
   minutes: number;
   useSchumann: boolean;
   healingMode: boolean;
-  colorClassName: string;
 }
 
 interface Ritual {
@@ -312,7 +395,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'My body feels overloaded and I need to settle down.',
     recommendation: 'Best path: guided tapping to calm your nervous system first.',
     actionLabel: 'Start Calm Reset',
-    mode: 'tapping',
+    mode: 'studio',
     icon: Heart,
     iconClassName: 'text-emerald-400'
   },
@@ -322,7 +405,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I want to lock in and get useful work done.',
     recommendation: 'Best path: 528Hz focus tone with your work timer.',
     actionLabel: 'Start Focus Session',
-    mode: 'frequencies',
+    mode: 'practice',
     frequencyId: '528',
     icon: Zap,
     iconClassName: 'text-app-accent'
@@ -333,7 +416,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I feel scattered and want to feel stable again.',
     recommendation: 'Best path: grounding frequencies with Schumann support.',
     actionLabel: 'Start Grounding Tone',
-    mode: 'frequencies',
+    mode: 'practice',
     frequencyId: '396',
     icon: Activity,
     iconClassName: 'text-amber-500'
@@ -344,7 +427,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I want a restorative, inward session.',
     recommendation: 'Best path: healing frequency mode with a restorative tone.',
     actionLabel: 'Start Healing Tone',
-    mode: 'frequencies',
+    mode: 'practice',
     frequencyId: '639',
     icon: Sparkles,
     iconClassName: 'text-pink-400'
@@ -355,7 +438,7 @@ const SESSION_INTENTION_PRESETS: SessionIntentionPreset[] = [
     prompt: 'I want to wind down and quiet my system.',
     recommendation: 'Best path: sonic chants for low-stimulation slowing down.',
     actionLabel: 'Open Sleep Sounds',
-    mode: 'chants',
+    mode: 'studio',
     icon: Wind,
     iconClassName: 'text-sky-400'
   }
@@ -369,12 +452,11 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Soft Landing Reset',
     summary: 'Low tone, breath haptics, and a short calm path.',
     frequencyId: '396',
-    hapticId: 'breathe',
+    hapticId: 'release',
     chantId: 'voo',
     minutes: 7,
     useSchumann: true,
-    healingMode: true,
-    colorClassName: 'text-emerald-300'
+    healingMode: true
   },
   {
     id: 'scattered',
@@ -383,12 +465,11 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Gather Focus',
     summary: '528Hz, zen pulse, and a clean focus timer.',
     frequencyId: '528',
-    hapticId: 'zen',
+    hapticId: 'focus',
     chantId: 'hum',
     minutes: 15,
     useSchumann: false,
-    healingMode: false,
-    colorClassName: 'text-app-accent'
+    healingMode: false
   },
   {
     id: 'tired',
@@ -397,12 +478,11 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Gentle Lift',
     summary: 'Bright tone, light pulse, and a restorative pace.',
     frequencyId: '741',
-    hapticId: 'waves',
+    hapticId: 'clear',
     chantId: 'eee',
     minutes: 10,
     useSchumann: false,
-    healingMode: false,
-    colorClassName: 'text-sky-300'
+    healingMode: false
   },
   {
     id: 'tense',
@@ -411,12 +491,11 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Release Tension',
     summary: 'Slow exhale guide, heartbeat haptic, and grounding tone.',
     frequencyId: '174',
-    hapticId: 'heartbeat',
+    hapticId: 'relief',
     chantId: 'mmm',
     minutes: 8,
     useSchumann: true,
-    healingMode: true,
-    colorClassName: 'text-rose-300'
+    healingMode: true
   },
   {
     id: 'blocked',
@@ -425,12 +504,11 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Unblock Flow',
     summary: '417Hz, movement-friendly haptics, and an open vowel.',
     frequencyId: '417',
-    hapticId: 'waves',
+    hapticId: 'release',
     chantId: 'aaa',
     minutes: 12,
     useSchumann: false,
-    healingMode: true,
-    colorClassName: 'text-orange-300'
+    healingMode: true
   },
   {
     id: 'focused',
@@ -439,14 +517,17 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
     sessionName: 'Deep Work Shield',
     summary: '852Hz clarity, minimal haptics, and a longer work block.',
     frequencyId: '852',
-    hapticId: 'zen',
+    hapticId: 'insight',
     chantId: 'om',
     minutes: 25,
     useSchumann: false,
-    healingMode: false,
-    colorClassName: 'text-indigo-300'
+    healingMode: false
   }
 ];
+
+function moodColor(mood: MoodSessionPreset): string {
+  return SOLFEGGIO_FREQUENCIES.find((frequency) => frequency.id === mood.frequencyId)?.color ?? '#4F8F7A';
+}
 
 // --- Components ---
 
@@ -653,6 +734,7 @@ function SacredGeometry({
     <div ref={containerRef} className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
       <canvas 
         ref={canvasRef} 
+        aria-hidden="true"
         className="w-full h-full opacity-60 mix-blend-screen"
       />
     </div>
@@ -719,6 +801,7 @@ function BreathingGuide({ isPlaying }: { isPlaying: boolean }) {
 }
 
 export default function App() {
+  const studio = useStudio();
   const [activeFreq, setActiveFreq] = useState<Frequency | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
@@ -742,7 +825,10 @@ export default function App() {
     return DEFAULT_PROFILE;
   });
 
-  const [mode, setMode] = useState<AppMode>('frequencies');
+  const [mode, setMode] = useState<AppMode>('home');
+  const [studioMode, setStudioMode] = useState<StudioMode>('chants');
+  const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
+  const [completedSession, setCompletedSession] = useState<Ritual | null>(null);
   const [showStartHere, setShowStartHere] = useState(() => getStoredValue('focusflow_start_here_dismissed') !== 'true');
   const [selectedSessionIntention, setSelectedSessionIntention] = useState<SessionIntentionId>(() => {
     const storedIntention = getStoredValue('focusflow_session_intention', 'focus');
@@ -821,7 +907,9 @@ export default function App() {
     ) ?? SOLFEGGIO_FREQUENCIES[0];
 
     dismissStartHere();
-    setMode('frequencies');
+    setMode('practice');
+    setSessionPhase('settling');
+    setCompletedSession(null);
     playFrequency(starterFrequency);
     triggerHaptic(20);
   };
@@ -833,6 +921,13 @@ export default function App() {
   useEffect(() => {
     setStoredValue('focusflow_session_intention', selectedSessionIntention);
   }, [selectedSessionIntention]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--session-wash',
+      sessionPhase === 'running' && activeFreq ? `${activeFreq.color}20` : 'transparent'
+    );
+  }, [sessionPhase, activeFreq]);
 
   useEffect(() => {
     setStoredValue('focusflow_rituals', JSON.stringify(savedRituals.slice(0, 12)));
@@ -897,7 +992,7 @@ export default function App() {
   const gainNode = useRef<GainNode | null>(null);
   const masterGainNode = useRef<GainNode | null>(null);
   const sonicGainNode = useRef<GainNode | null>(null);
-  const reverbNode = useRef<ConvolverNode | GainNode | null>(null);
+  const reverbNode = useRef<ConvolverNode | null>(null);
   const analyzer = useRef<AnalyserNode | null>(null);
   const micStream = useRef<MediaStream | null>(null);
   const micSource = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -974,12 +1069,26 @@ export default function App() {
       masterGainNode.current.gain.setValueAtTime(initialGain, audioCtx.current.currentTime);
       masterGainNode.current.connect(audioCtx.current.destination);
 
+      reverbNode.current = audioCtx.current.createConvolver();
+      const impulseLength = audioCtx.current.sampleRate * 2.2;
+      const impulse = audioCtx.current.createBuffer(2, impulseLength, audioCtx.current.sampleRate);
+      for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+        const data = impulse.getChannelData(channel);
+        for (let i = 0; i < impulseLength; i++) {
+          const decay = Math.pow(1 - i / impulseLength, 2.8);
+          data[i] = (Math.random() * 2 - 1) * decay * 0.18;
+        }
+      }
+      reverbNode.current.buffer = impulse;
+      reverbNode.current.connect(masterGainNode.current);
+
       // Solfeggio Gain (for fading)
       gainNode.current = audioCtx.current.createGain();
       gainNode.current.gain.setValueAtTime(0, audioCtx.current.currentTime);
       
       // Connect Solfeggio chain directly so selected tones stay frequency-accurate.
       gainNode.current.connect(masterGainNode.current);
+      gainNode.current.connect(reverbNode.current);
 
       // Sonic Vocalizations Gain
       sonicGainNode.current = audioCtx.current.createGain();
@@ -1087,6 +1196,9 @@ export default function App() {
       const subOsc = (osc1 as any).subOsc;
       const breathSource = (osc1 as any).breathSource;
       const lfo = (osc1 as any).lfo;
+      const partial = (osc1 as any).partial;
+      const air = (osc1 as any).air;
+      const drift = (osc1 as any).drift;
       const formants = (osc1 as any).formants;
       
       setTimeout(() => {
@@ -1108,6 +1220,18 @@ export default function App() {
           if (lfo) {
             lfo.stop();
             lfo.disconnect();
+          }
+          if (partial) {
+            partial.stop();
+            partial.disconnect();
+          }
+          if (air) {
+            air.stop();
+            air.disconnect();
+          }
+          if (drift) {
+            drift.stop();
+            drift.disconnect();
           }
           if (formants) {
             formants.forEach((f: any) => {
@@ -1160,13 +1284,44 @@ export default function App() {
       navigator.mediaSession.playbackState = 'playing';
     }
 
-    // Oscillator 1 (Left)
     const osc1 = ctx.createOscillator();
     osc1.type = 'sine';
-    
-    // Oscillator 2 (Right)
     const osc2 = ctx.createOscillator();
     osc2.type = 'sine';
+    const partial = ctx.createOscillator();
+    partial.type = 'sine';
+    const partialGain = ctx.createGain();
+    const air = ctx.createBufferSource();
+    const airGain = ctx.createGain();
+    const airFilter = ctx.createBiquadFilter();
+    const drift = ctx.createOscillator();
+    const driftGain = ctx.createGain();
+
+    partial.frequency.setValueAtTime(freq.hz * 2, now);
+    partialGain.gain.setValueAtTime(0.0001, now);
+    partialGain.gain.exponentialRampToValueAtTime(0.07, now + 1.2);
+
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const noise = noiseBuffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < noise.length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = 0.98 * last + 0.02 * white;
+      noise[i] = last;
+    }
+    air.buffer = noiseBuffer;
+    air.loop = true;
+    airFilter.type = 'lowpass';
+    airFilter.frequency.setValueAtTime(1800, now);
+    airGain.gain.setValueAtTime(0.0001, now);
+    airGain.gain.exponentialRampToValueAtTime(0.012, now + 2);
+
+    drift.type = 'sine';
+    drift.frequency.setValueAtTime(1 / 30, now);
+    driftGain.gain.setValueAtTime(4, now);
+    drift.connect(driftGain);
+    driftGain.connect(osc1.detune);
+    driftGain.connect(osc2.detune);
 
     if (healingEnabled) {
       // Center a 6Hz binaural offset around the selected carrier frequency.
@@ -1174,27 +1329,34 @@ export default function App() {
       osc1.frequency.setValueAtTime(freq.hz - 3, now);
       osc2.frequency.setValueAtTime(freq.hz + 3, now);
       
-      const merger = ctx.createChannelMerger(2);
+      const panner1 = ctx.createStereoPanner();
+      const panner2 = ctx.createStereoPanner();
       const g1 = ctx.createGain();
       const g2 = ctx.createGain();
+      panner1.pan.setValueAtTime(-0.7, now);
+      panner2.pan.setValueAtTime(0.7, now);
       
       osc1.connect(g1);
       osc2.connect(g2);
-      
-      g1.connect(merger, 0, 0); // Left
-      g2.connect(merger, 0, 1); // Right
-      
-      merger.connect(gainNode.current!);
+      g1.connect(panner1).connect(gainNode.current!);
+      g2.connect(panner2).connect(gainNode.current!);
       oscillator2.current = osc2;
       osc2.start();
     } else {
       osc1.frequency.setValueAtTime(freq.hz, now);
+      osc2.frequency.setValueAtTime(freq.hz, now);
+      osc2.detune.setValueAtTime(3, now);
       osc1.connect(gainNode.current!);
+      osc2.connect(gainNode.current!);
+      oscillator2.current = osc2;
+      osc2.start();
     }
 
+    partial.connect(partialGain).connect(gainNode.current!);
+    air.connect(airFilter).connect(airGain).connect(gainNode.current!);
     gainNode.current!.gain.cancelScheduledValues(now);
     gainNode.current!.gain.setValueAtTime(0.0001, now);
-    gainNode.current!.gain.exponentialRampToValueAtTime(0.42, now + 0.8);
+    gainNode.current!.gain.setTargetAtTime(0.42, now, 1.4);
     
     // Schumann resonance anchor. 7.83Hz is the common rounded reference value.
     if (schumannEnabled) {
@@ -1210,11 +1372,45 @@ export default function App() {
     }
 
     osc1.start();
+    partial.start();
+    air.start();
+    drift.start();
     oscillator.current = osc1;
+    (oscillator.current as any).partial = partial;
+    (oscillator.current as any).air = air;
+    (oscillator.current as any).drift = drift;
     setActiveFreq(freq);
     setIsPlaying(true);
     void requestWakeLock();
   }, [initAudio, stopFrequency, isHealingMode, isSchumannActive, requestWakeLock]);
+
+  const strikeBell = useCallback((fundamental: number) => {
+    const ctx = initAudio();
+    const out = reverbNode.current ?? masterGainNode.current;
+    if (!ctx || !out) return;
+
+    const partials = [
+      { ratio: 1.00, gain: 1.00, decay: 4.0 },
+      { ratio: 2.00, gain: 0.60, decay: 3.0 },
+      { ratio: 2.76, gain: 0.40, decay: 2.0 },
+      { ratio: 5.40, gain: 0.25, decay: 1.2 },
+      { ratio: 8.93, gain: 0.15, decay: 0.6 },
+    ];
+    const now = ctx.currentTime;
+
+    partials.forEach((partial) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(fundamental * partial.ratio, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(partial.gain * 0.12, now + 0.018);
+      gain.gain.setTargetAtTime(0.0001, now + 0.08, partial.decay / 5);
+      osc.connect(gain).connect(out);
+      osc.start(now);
+      osc.stop(now + partial.decay + 0.2);
+    });
+  }, [initAudio]);
 
   const launchSessionIntention = useCallback((intentionId: SessionIntentionId) => {
     const preset = SESSION_INTENTION_PRESETS.find((entry) => entry.id === intentionId);
@@ -1225,7 +1421,7 @@ export default function App() {
 
     if (preset.frequencyId) {
       const targetFrequency = SOLFEGGIO_FREQUENCIES.find((frequency) => frequency.id === preset.frequencyId);
-      setMode('frequencies');
+      setMode('practice');
       if (targetFrequency) {
         playFrequency(targetFrequency);
       }
@@ -1314,46 +1510,54 @@ export default function App() {
   const playHaptic = useCallback((haptic: HapticPattern) => {
     stopHaptic();
     setActiveHaptic(haptic);
-    
-    const totalDuration = haptic.pattern.reduce((a, b) => a + b, 0);
+
+    const runScore = () => {
+      const vibrationPattern = haptic.events
+        .slice()
+        .sort((a, b) => a.at - b.at)
+        .flatMap((event, index, events) => {
+          const previousEnd = index === 0 ? 0 : events[index - 1].at + events[index - 1].duration;
+          return [Math.max(0, event.at - previousEnd), Math.max(1, event.duration)];
+        });
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(vibrationPattern);
+      }
+
+      if (useSimulatedHaptics || !('vibrate' in navigator)) {
+        const ctx = initAudio();
+        if (!ctx) return;
+
+        haptic.events.forEach((event) => {
+          const now = ctx.currentTime + event.at / 1000;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const duration = Math.max(0.04, event.duration / 1000);
+          const peak = 0.012 + event.intensity * 0.055;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(40 + event.intensity * 40, now);
+          gain.gain.setValueAtTime(0.0001, now);
+          if (event.curve === 'swell') {
+            gain.gain.exponentialRampToValueAtTime(peak, now + duration * 0.65);
+          } else {
+            gain.gain.exponentialRampToValueAtTime(peak, now + Math.min(0.08, duration * 0.25));
+          }
+          gain.gain.setTargetAtTime(0.0001, now + duration * 0.7, 0.08);
+
+          osc.connect(gain).connect(masterGainNode.current ?? ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.25);
+        });
+      }
+    };
     
     const run = () => {
-      // Physical Haptics
-      if ('vibrate' in navigator) {
-        navigator.vibrate(haptic.pattern);
-      }
-      
-      // Simulated Audio Haptics (Subtle clicks for desktop)
-      if (useSimulatedHaptics || !('vibrate' in navigator)) {
-        initAudio();
-        if (audioCtx.current) {
-          let offset = 0;
-          haptic.pattern.forEach((duration, i) => {
-            if (i % 2 === 0) { // Vibration part
-              const now = audioCtx.current!.currentTime + (offset / 1000);
-              const osc = audioCtx.current!.createOscillator();
-              const g = audioCtx.current!.createGain();
-              
-              osc.type = 'sine';
-              osc.frequency.setValueAtTime(60, now); // Low thud
-              
-              g.connect(audioCtx.current!.destination);
-              g.gain.setValueAtTime(0, now);
-              g.gain.linearRampToValueAtTime(0.015, now + 0.04);
-              g.gain.exponentialRampToValueAtTime(0.0001, now + (duration / 1000));
-              
-              osc.connect(g);
-              osc.start(now);
-              osc.stop(now + (duration / 1000));
-            }
-            offset += duration;
-          });
-        }
-      }
+      runScore();
     };
 
     run();
-    hapticInterval.current = setInterval(run, totalDuration);
+    if (haptic.loopMs) hapticInterval.current = setInterval(run, haptic.loopMs);
   }, [stopHaptic, useSimulatedHaptics, initAudio]);
 
   useEffect(() => {
@@ -1796,7 +2000,7 @@ export default function App() {
     const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === ritual.hapticId);
     const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
 
-    setMode('frequencies');
+    setMode('practice');
     setSelectedMoodId(ritual.moodId);
     setUserProfile((profile) => ({
       ...profile,
@@ -1814,6 +2018,9 @@ export default function App() {
     playFrequency(frequency, { healingMode: ritual.healingMode, schumannActive: ritual.useSchumann });
     if (haptic) playHaptic(haptic);
     triggerHaptic([20, 40, 20]);
+    window.setTimeout(() => {
+      setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
+    }, 18000);
   }, [playFrequency, playHaptic, triggerHaptic]);
 
   const launchMoodSession = useCallback((moodId: MoodId) => {
@@ -1849,6 +2056,19 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
+    setSessionPhase('closing');
+    setCompletedSession(session);
+    stopFrequency();
+    stopHaptic();
+    strikeBell(SOLFEGGIO_FREQUENCIES.find((entry) => entry.id === session.frequencyId)?.hz ?? 528);
+    window.setTimeout(() => setSessionPhase('complete'), 4200);
+    triggerHaptic([60, 30, 60]);
+  }, [activeGeneratedSession, selectedMoodId, stopFrequency, stopHaptic, strikeBell, triggerHaptic]);
+
+  const plantCompletedSession = useCallback(() => {
+    const session = completedSession ?? activeGeneratedSession;
+    if (!session) return;
+
     const entry: GardenEntry = {
       id: `garden-${Date.now()}`,
       ritualName: session.name,
@@ -1860,12 +2080,15 @@ export default function App() {
 
     setGardenEntries((current) => [entry, ...current].slice(0, 60));
     setActiveGeneratedSession(null);
-    triggerHaptic([60, 30, 60]);
-  }, [activeGeneratedSession, selectedMoodId, triggerHaptic]);
+    setCompletedSession(null);
+    setSessionPhase('idle');
+    setMode('garden');
+  }, [activeGeneratedSession, completedSession]);
 
   const stopAll = useCallback(() => {
     stopFrequency();
     stopHaptic();
+    setSessionPhase('idle');
     if (isMicActive) {
       toggleMic();
     }
@@ -1963,7 +2186,7 @@ export default function App() {
   }, [initAudio]);
 
   return (
-    <div className="luxury-zen min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden relative">
       {/* Background Atmosphere */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 zen-atmosphere" />
@@ -1987,58 +2210,28 @@ export default function App() {
             </div>
           </div>
           <NavButton 
-            active={mode === 'frequencies'} 
-            onClick={() => setMode('frequencies')} 
+            active={mode === 'home'} 
+            onClick={() => setMode('home')} 
+            icon={<Sparkles size={24} />} 
+            label="Home" 
+          />
+          <NavButton 
+            active={mode === 'practice'} 
+            onClick={() => setMode('practice')} 
             icon={<Zap size={24} />} 
-            label="Frequencies" 
+            label="Practice" 
           />
           <NavButton 
-            active={mode === 'tapping'} 
-            onClick={() => setMode('tapping')} 
-            icon={<Fingerprint size={24} />} 
-            label="Tapping" 
+            active={mode === 'garden'} 
+            onClick={() => setMode('garden')} 
+            icon={<Flower2 size={24} />} 
+            label="Garden" 
           />
           <NavButton 
-            active={mode === 'timer'} 
-            onClick={() => setMode('timer')} 
-            icon={<Timer size={24} />} 
-            label="Timer" 
-          />
-          <NavButton 
-            active={mode === 'haptics'} 
-            onClick={() => setMode('haptics')} 
-            icon={<Waves size={24} />} 
-            label="Haptics" 
-          />
-      <NavButton 
-            active={mode === 'chants'} 
-            onClick={() => setMode('chants')} 
-            icon={<Mic size={24} />} 
-            label="Chants" 
-          />
-          <NavButton 
-            active={mode === 'handpan'} 
-            onClick={() => setMode('handpan')} 
-            icon={<Music size={24} />} 
-            label="Handpan" 
-          />
-          <NavButton 
-            active={mode === 'reiki'} 
-            onClick={() => setMode('reiki')} 
-            icon={<Shield size={24} />} 
-            label="Reiki" 
-          />
-          <NavButton 
-            active={mode === 'about'} 
-            onClick={() => setMode('about')} 
-            icon={<Info size={24} />} 
-            label="About" 
-          />
-          <NavButton 
-            active={mode === 'profile'} 
-            onClick={() => setMode('profile')} 
+            active={mode === 'you'} 
+            onClick={() => setMode('you')} 
             icon={<User size={24} />} 
-            label="Profile" 
+            label="You" 
           />
           
            <div className="flex flex-col items-center mt-auto pb-2 sm:pb-4 gap-3 sm:gap-4">
@@ -2270,7 +2463,7 @@ export default function App() {
                     )}
                   </motion.div>
                 )}
-                {mode === 'frequencies' && activeFreq && isPlaying && (
+                {mode === 'practice' && activeFreq && isPlaying && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -2291,7 +2484,29 @@ export default function App() {
             isZenMode && "opacity-0 pointer-events-none"
           )}>
             <AnimatePresence mode="wait">
-              {mode === 'frequencies' && (
+              {mode === 'home' && (
+                <motion.div
+                  key="home"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <HomeView
+                    selectedMoodId={selectedMoodId}
+                    onSelectMood={setSelectedMoodId}
+                    onBegin={launchMoodSession}
+                    onFeelIt={() => launchMoodSession('tense')}
+                    lastEntry={gardenEntries[0] ?? null}
+                    onAgain={(entry) => {
+                      const mood = MOOD_SESSION_PRESETS.find((preset) => preset.id === entry.moodId) ?? MOOD_SESSION_PRESETS[0];
+                      launchMoodSession(mood.id);
+                    }}
+                    onPractice={() => setMode('practice')}
+                  />
+                </motion.div>
+              )}
+
+              {mode === 'practice' && (
                 <motion.div 
                   key="freq"
                   initial={{ opacity: 0, y: 20 }}
@@ -2308,6 +2523,9 @@ export default function App() {
                     onDeleteRitual={(ritualId) => setSavedRituals((current) => current.filter((ritual) => ritual.id !== ritualId))}
                     gardenEntries={gardenEntries}
                     onCompleteSession={completeGardenSession}
+                    sessionPhase={sessionPhase}
+                    completedSession={completedSession}
+                    onPlantSession={plantCompletedSession}
                   />
 
                   {showStartHere && (
@@ -2486,6 +2704,109 @@ export default function App() {
                       <p>FocusFlow uses the Media Session API to keep audio active when your phone is locked or in the background. For uninterrupted sessions, enable **"Keep Screen On"** in your profile settings.</p>
                     </div>
                   </div>
+                </motion.div>
+              )}
+
+              {mode === 'garden' && (
+                <motion.div
+                  key="garden"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="h-full"
+                >
+                  <GardenView
+                    entries={gardenEntries}
+                    onBegin={() => setMode('home')}
+                  />
+                </motion.div>
+              )}
+
+              {mode === 'you' && (
+                <motion.div
+                  key="you"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="h-full"
+                >
+                  <YouView
+                    profile={userProfile}
+                    onUpdate={setUserProfile}
+                    sessionCount={gardenEntries.length}
+                    hasStudio={studio.hasStudio}
+                    onOpenStudio={() => setMode('studio')}
+                    onUnlock={studio.unlock}
+                    onRestore={studio.restore}
+                  />
+                </motion.div>
+              )}
+
+              {mode === 'studio' && (
+                <motion.div
+                  key="studio"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="h-full"
+                >
+                  <StudioView
+                    studioMode={studioMode}
+                    onSelectStudioMode={setStudioMode}
+                    hasStudio={studio.hasStudio}
+                    onUnlock={studio.unlock}
+                    onRestore={studio.restore}
+                    studioContent={{
+                      chants: (
+                        <SonicChantView
+                          triggerHaptic={triggerHaptic}
+                          isMicActive={isMicActive}
+                          toggleMic={toggleMic}
+                          analyzer={analyzer}
+                          uploadedAudioUrl={uploadedAudioUrl}
+                          isAudioPlaying={isAudioPlaying}
+                          onUpload={handleAudioUpload}
+                          onTogglePlayback={toggleAudioPlayback}
+                          onRemove={removeUploadedAudio}
+                          isReferencePlaying={isReferencePlaying}
+                          activeReferenceId={activeReferenceId}
+                          onPlayReference={playReferenceTone}
+                          isAudioLoading={isAudioLoading}
+                          selectedChant={selectedChant}
+                          setSelectedChant={setSelectedChant}
+                          audioVolume={audioVolume}
+                          setIsZenMode={setIsZenMode}
+                          isDroneActive={isDroneActive}
+                          toggleDrone={toggleDrone}
+                          micPitch={micPitch}
+                        />
+                      ),
+                      handpan: (
+                        <HandPanView
+                          playNote={playHandPanNote}
+                          triggerHaptic={triggerHaptic}
+                          isRecording={isRecording}
+                          recordedUrl={recordedUrl}
+                          onStartRecording={startRecording}
+                          onStopRecording={stopRecording}
+                          onDiscardRecording={() => {
+                            if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+                            setRecordedUrl(null);
+                          }}
+                        />
+                      ),
+                      reiki: <ReikiView />,
+                      tapping: (
+                        <TappingView
+                          triggerHaptic={triggerHaptic}
+                          currentIndex={tappingPointIndex}
+                          onIndexChange={setTappingPointIndex}
+                        />
+                      ),
+                      guide: <GuideView onStartQuickSession={startQuickSession} onOpenMode={openModeFromStartHere} />,
+                      about: <AboutView />
+                    }}
+                  />
                 </motion.div>
               )}
 
@@ -2706,11 +3027,11 @@ export default function App() {
 
       {/* Info Tooltip */}
       <div className={cn(
-        "mt-8 text-app-muted text-xs flex items-center gap-2 opacity-50 hover:opacity-100 transition-all duration-500 cursor-help",
+        "mt-8 max-w-3xl text-app-muted text-xs flex items-start gap-2 opacity-55 hover:opacity-100 transition-all duration-500",
         isZenMode && "opacity-0 pointer-events-none"
       )}>
-        <Info size={14} />
-        <span>Solfeggio frequencies and EFT tapping are used for emotional regulation.</span>
+        <Info size={14} className="mt-0.5 shrink-0" />
+        <span>Focus Flow is a tool for rest and attention. It is not medical advice and it does not treat, diagnose, or cure anything. If you have a seizure disorder, a pacemaker, or a hearing condition, check with a clinician first. If anything here makes you feel unwell, stop.</span>
       </div>
     </div>
   );
@@ -2718,10 +3039,270 @@ export default function App() {
 
 // --- Sub-Components ---
 
+function HomeView({
+  selectedMoodId,
+  onSelectMood,
+  onBegin,
+  onFeelIt,
+  lastEntry,
+  onAgain,
+  onPractice
+}: {
+  selectedMoodId: MoodId;
+  onSelectMood: (moodId: MoodId) => void;
+  onBegin: (moodId: MoodId) => void;
+  onFeelIt: () => void;
+  lastEntry: GardenEntry | null;
+  onAgain: (entry: GardenEntry) => void;
+  onPractice: () => void;
+}) {
+  const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
+  const haptic = HAPTIC_PATTERNS.find((score) => score.id === selectedMood.hapticId);
+
+  return (
+    <section className="max-w-4xl mx-auto py-8 sm:py-14">
+      <div className="text-center mb-8">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent mb-3">Focus Flow</p>
+        <h2 className="text-4xl sm:text-6xl font-serif italic leading-none">How are you arriving?</h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+        {MOOD_SESSION_PRESETS.map((mood) => {
+          const color = moodColor(mood);
+          const selected = mood.id === selectedMoodId;
+          return (
+            <button
+              key={mood.id}
+              onClick={() => onSelectMood(mood.id)}
+              className={cn(
+                "min-h-[88px] rounded-2xl border p-4 text-left transition-all focus-visible:ring-2 focus-visible:ring-app-accent",
+                selected ? "text-white shadow-2xl" : "bg-white/[0.03] border-white/10 text-app-text hover:bg-white/[0.06]"
+              )}
+              style={{
+                borderColor: selected ? color : undefined,
+                background: selected ? `linear-gradient(135deg, ${color}, ${color}66)` : undefined
+              }}
+            >
+              <span className="text-sm font-medium">{mood.label}</span>
+              <p className="text-[10px] text-current/70 leading-tight mt-2">{mood.feeling}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="premium-card rounded-[32px] p-6 sm:p-8 mb-5">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div>
+            <h3 className="text-3xl font-serif italic">{selectedMood.sessionName}</h3>
+            <p className="text-sm text-app-muted mt-2">{selectedMood.minutes} minutes · {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
+          </div>
+          <button
+            onClick={() => onBegin(selectedMood.id)}
+            className="px-7 py-3 rounded-full bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
+          >
+            Begin
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button onClick={onFeelIt} className="rounded-2xl border border-app-accent/30 bg-app-accent/10 p-4 text-left hover:bg-app-accent/15 transition-colors">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent mb-2">Thirty seconds</p>
+          <h3 className="text-xl font-serif italic">Feel it</h3>
+        </button>
+        {lastEntry ? (
+          <button onClick={() => onAgain(lastEntry)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left hover:bg-white/[0.06] transition-colors">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted mb-2">Again</p>
+            <h3 className="text-xl font-serif italic">{lastEntry.ritualName}</h3>
+          </button>
+        ) : (
+          <button onClick={onPractice} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left hover:bg-white/[0.06] transition-colors">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted mb-2">Or</p>
+            <h3 className="text-xl font-serif italic">Choose your own tones</h3>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function GardenView({ entries, onBegin }: { entries: GardenEntry[]; onBegin: () => void }) {
+  const totalMinutes = entries.reduce((sum, entry) => sum + entry.minutes, 0);
+  const mostMood = entries.reduce<Record<string, number>>((counts, entry) => {
+    counts[entry.moodId] = (counts[entry.moodId] ?? 0) + 1;
+    return counts;
+  }, {});
+  const mostMoodId = Object.entries(mostMood).sort((a, b) => b[1] - a[1])[0]?.[0] as MoodId | undefined;
+  const mostMoodLabel = MOOD_SESSION_PRESETS.find((mood) => mood.id === mostMoodId)?.label ?? 'None yet';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (entries.length === 0) {
+    return (
+      <section className="h-full flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <Flower2 size={36} className="mx-auto text-app-accent mb-5" />
+          <h2 className="text-3xl font-serif italic">Your garden is empty.</h2>
+          <p className="text-sm text-app-muted mt-3 mb-6">Every session you finish plants something here.</p>
+          <button onClick={onBegin} className="px-7 py-3 rounded-full bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold">Begin</button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="max-w-5xl mx-auto py-6">
+      <div className="mb-5">
+        <h2 className="text-4xl font-serif italic">Garden</h2>
+      </div>
+      <div className="premium-card rounded-[36px] p-4 sm:p-6">
+        <svg viewBox="0 0 1000 560" className="relative z-10 w-full min-h-[360px]" role="img" aria-label="Your session garden">
+          <defs>
+            <radialGradient id="gardenField" cx="50%" cy="45%" r="75%">
+              <stop offset="0%" stopColor="#233129" />
+              <stop offset="100%" stopColor="#121a17" />
+            </radialGradient>
+          </defs>
+          <rect width="1000" height="560" rx="32" fill="url(#gardenField)" />
+          {entries.slice(0, 60).map((entry, index) => {
+            const seed = Array.from(entry.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+            const x = 80 + (seed * 37) % 840;
+            const y = 90 + (seed * 53) % 380;
+            const frequency = SOLFEGGIO_FREQUENCIES.find((freq) => freq.id === entry.frequencyId);
+            const color = frequency?.color ?? '#4F8F7A';
+            const size = Math.max(10, Math.min(34, entry.minutes * 1.2));
+            const opacity = Math.max(0.34, 1 - index * 0.018);
+            const petals = entry.moodId === 'focused' || entry.moodId === 'blocked' ? 8 : 6;
+            return (
+              <g key={entry.id} transform={`translate(${x} ${y})`} opacity={opacity}>
+                {Array.from({ length: petals }).map((_, petalIndex) => (
+                  <ellipse
+                    key={petalIndex}
+                    cx="0"
+                    cy={-size * 0.62}
+                    rx={size * 0.28}
+                    ry={size * 0.72}
+                    fill={color}
+                    transform={`rotate(${petalIndex * (360 / petals)})`}
+                  />
+                ))}
+                <circle r={size * 0.24} fill={index === 0 ? '#c59b54' : '#e8efeb'} />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <p className="text-xs text-app-muted mt-4 text-center">
+        {entries.length} sessions · {hours ? `${hours} hours ` : ''}{minutes} minutes · most often, {mostMoodLabel}
+      </p>
+    </section>
+  );
+}
+
+function YouView({
+  profile,
+  onUpdate,
+  sessionCount,
+  hasStudio,
+  onOpenStudio,
+  onUnlock,
+  onRestore
+}: {
+  profile: UserProfile;
+  onUpdate: (profile: UserProfile) => void;
+  sessionCount: number;
+  hasStudio: boolean;
+  onOpenStudio: () => void;
+  onUnlock: () => void;
+  onRestore: () => void;
+}) {
+  const studioRevealed = sessionCount >= 3 || hasStudio;
+  const showOffer = sessionCount >= 5 && !hasStudio;
+
+  return (
+    <section className="max-w-3xl mx-auto py-8 space-y-5">
+      <ProfileView profile={profile} onUpdate={onUpdate} triggerHaptic={() => {}} />
+      {studioRevealed && (
+        <button onClick={onOpenStudio} className="w-full premium-card rounded-[28px] p-5 text-left">
+          <p className="relative z-10 text-[10px] font-mono uppercase tracking-widest text-app-muted mb-2">Studio</p>
+          <h3 className="relative z-10 text-2xl font-serif italic">A quieter room</h3>
+        </button>
+      )}
+      {showOffer && (
+        <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />
+      )}
+    </section>
+  );
+}
+
+function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boolean; onUnlock: () => void; onRestore: () => void }) {
+  if (hasStudio) return null;
+
+  return (
+    <div className="premium-card rounded-[28px] p-6">
+      <div className="relative z-10">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-app-gold mb-3">Studio</p>
+        <h3 className="text-3xl font-serif italic">No subscription. Not now, not later.</h3>
+        <p className="text-sm text-app-muted mt-3">You buy it once and it is yours. Studio unlock is $19.99.</p>
+        <div className="flex flex-wrap gap-3 mt-5">
+          <button onClick={onUnlock} className="px-6 py-3 rounded-full bg-app-gold text-black font-mono text-[10px] uppercase tracking-widest font-bold">Unlock Studio</button>
+          <button onClick={onRestore} className="px-6 py-3 rounded-full border border-white/10 text-app-muted font-mono text-[10px] uppercase tracking-widest">Restore purchases</button>
+        </div>
+        <p className="text-[10px] text-app-muted mt-4">Terms of use and privacy policy live with the App Store listing. Focus Flow collects no data.</p>
+      </div>
+    </div>
+  );
+}
+
+function StudioView({
+  studioMode,
+  onSelectStudioMode,
+  hasStudio,
+  onUnlock,
+  onRestore,
+  studioContent
+}: {
+  studioMode: StudioMode;
+  onSelectStudioMode: (mode: StudioMode) => void;
+  hasStudio: boolean;
+  onUnlock: () => void;
+  onRestore: () => void;
+  studioContent: Record<StudioMode, React.ReactNode>;
+}) {
+  const modes: Array<{ id: StudioMode; label: string }> = [
+    { id: 'chants', label: 'Chants' },
+    { id: 'handpan', label: 'Handpan' },
+    { id: 'reiki', label: 'Reiki' },
+    { id: 'tapping', label: 'Tapping' },
+    { id: 'guide', label: 'Guide' },
+    { id: 'about', label: 'About' }
+  ];
+
+  return (
+    <section className="h-full flex flex-col gap-5">
+      <div className="flex flex-wrap gap-2">
+        {modes.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelectStudioMode(item.id)}
+            className={cn("px-4 py-2 rounded-full border text-xs", studioMode === item.id ? "bg-app-accent text-black border-app-accent" : "border-white/10 text-app-muted")}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {!hasStudio && <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />}
+      <div className={cn("min-h-0 flex-1", !hasStudio && "opacity-80")}>{studioContent[studioMode]}</div>
+    </section>
+  );
+}
+
 function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
   return (
     <button 
       onClick={onClick}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
       style={{ WebkitTapHighlightColor: 'transparent' }}
       className={cn(
         "zen-nav-button flex flex-col items-center gap-1.5 transition-all duration-300 group w-full cursor-pointer outline-none py-1",
@@ -2751,7 +3332,10 @@ function PracticeHub({
   onLaunchRitual,
   onDeleteRitual,
   gardenEntries,
-  onCompleteSession
+  onCompleteSession,
+  sessionPhase,
+  completedSession,
+  onPlantSession
 }: {
   selectedMoodId: MoodId,
   onSelectMood: (moodId: MoodId) => void,
@@ -2761,7 +3345,10 @@ function PracticeHub({
   onLaunchRitual: (ritual: Ritual) => void,
   onDeleteRitual: (ritualId: string) => void,
   gardenEntries: GardenEntry[],
-  onCompleteSession: () => void
+  onCompleteSession: () => void,
+  sessionPhase: SessionPhase,
+  completedSession: Ritual | null,
+  onPlantSession: () => void
 }) {
   const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
   const totalMinutes = gardenEntries.reduce((sum, entry) => sum + entry.minutes, 0);
@@ -2812,7 +3399,9 @@ function PracticeHub({
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">How do you want to feel?</p>
-            <p className="text-xs text-app-muted mt-1">Tap the closest feeling. The session changes around you.</p>
+            <p className="text-xs text-app-muted mt-1">
+              {sessionPhase === 'settling' ? 'Settling in.' : sessionPhase === 'closing' ? 'Listen for the bell.' : 'Tap the closest feeling. The session changes around you.'}
+            </p>
           </div>
           <button
             onClick={() => onLaunchMoodSession(selectedMood.id)}
@@ -2831,15 +3420,16 @@ function PracticeHub({
               className={cn(
                 "zen-mood-card min-h-[112px] text-left p-3 rounded-2xl border transition-all relative overflow-hidden",
                 selectedMoodId === mood.id
-                  ? "is-selected bg-app-accent text-white border-app-accent shadow-[0_18px_34px_rgba(79,143,122,0.18)]"
+                  ? "is-selected text-white shadow-[0_18px_34px_rgba(79,143,122,0.18)]"
                   : "bg-black/25 border-white/10 text-white hover:bg-white/8 hover:border-white/20"
               )}
+              style={selectedMoodId === mood.id ? { backgroundColor: moodColor(mood), borderColor: moodColor(mood) } : undefined}
             >
               <div className={cn(
                 "absolute right-3 top-3 w-8 h-8 rounded-full border transition-opacity",
                 selectedMoodId === mood.id ? "border-white/35 bg-white/20" : "border-white/10 bg-white/5"
               )} />
-              <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", selectedMoodId === mood.id ? "text-white" : mood.colorClassName)}>
+              <span className="text-xs font-mono uppercase tracking-widest font-bold" style={selectedMoodId === mood.id ? undefined : { color: moodColor(mood) }}>
                 {mood.label}
               </span>
               <p className={cn("text-[10px] leading-tight mt-2", selectedMoodId === mood.id ? "text-white/80" : "text-app-muted")}>
@@ -2884,17 +3474,19 @@ function PracticeHub({
           <div className="zen-studio p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3 justify-between">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Progress Garden</p>
-              <h3 className="text-lg font-serif italic">Bloom when you finish</h3>
+              <h3 className="text-lg font-serif italic">{sessionPhase === 'complete' ? 'Plant it' : 'Bloom when you finish'}</h3>
               <p className="text-xs text-app-muted leading-relaxed mt-2">
-                No saving required. Complete the reset and add a bloom to your garden.
+                {sessionPhase === 'complete' && completedSession
+                  ? `You gave yourself ${completedSession.minutes} minutes.`
+                  : 'Complete the reset, hear the bell, then plant it in your garden.'}
               </p>
             </div>
             <button
-              onClick={onCompleteSession}
+              onClick={sessionPhase === 'complete' ? onPlantSession : onCompleteSession}
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-emerald-300 text-black hover:brightness-105 transition-colors font-mono text-[10px] uppercase tracking-widest font-bold premium-button"
             >
               <CheckCircle2 size={13} />
-              Bloom Complete
+              {sessionPhase === 'complete' ? 'Plant it' : 'Close session'}
             </button>
           </div>
         </div>
@@ -3075,21 +3667,9 @@ function HapticCard({ haptic, isActive, isPreferred, onSetPreferred, onClick }: 
   onSetPreferred: () => void,
   onClick: () => void 
 }) {
-  // Calculate total duration for the animation loop
-  const totalDuration = haptic.pattern.reduce((a, b) => a + b, 0) / 1000;
-  
-  // Create keyframes for opacity based on the pattern
-  // Even indices are vibration (visible), odd are pauses (invisible)
-  const times: number[] = [0];
-  const values: number[] = [1];
-  let currentPos = 0;
-  const total = haptic.pattern.reduce((a, b) => a + b, 0);
-  
-  haptic.pattern.forEach((duration, i) => {
-    currentPos += duration;
-    times.push(currentPos / total);
-    values.push(i % 2 === 0 ? 0 : 1); // If we just finished a vibe, go to 0. If we finished a pause, go to 1.
-  });
+  const totalDuration = (haptic.loopMs ?? Math.max(...haptic.events.map((event) => event.at + event.duration), 1000)) / 1000;
+  const times = haptic.events.flatMap((event) => [event.at / (haptic.loopMs ?? 1000), (event.at + event.duration) / (haptic.loopMs ?? 1000)]).filter((time) => time <= 1);
+  const values = haptic.events.flatMap(() => [1, 0]);
 
   return (
     <div 
@@ -3189,7 +3769,13 @@ function HapticCard({ haptic, isActive, isPreferred, onSetPreferred, onClick }: 
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              if ('vibrate' in navigator) navigator.vibrate(haptic.pattern);
+              if ('vibrate' in navigator) {
+                const pattern = haptic.events.flatMap((event, index, events) => {
+                  const previousEnd = index === 0 ? 0 : events[index - 1].at + events[index - 1].duration;
+                  return [Math.max(0, event.at - previousEnd), event.duration];
+                });
+                navigator.vibrate(pattern);
+              }
             }}
             className="text-[10px] font-mono uppercase tracking-widest text-app-accent/60 hover:text-app-accent transition-colors flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md"
           >
@@ -4030,7 +4616,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: `A commonly used modern wellness tone set: 174, 285, 396, 417, 528, 639, 741, 852, and 963Hz. These are intentional listening tones, not ${TUNING_STANDARD} note names or medical treatments.`,
       icon: Sparkles,
       iconClassName: 'text-app-accent',
-      mode: 'frequencies',
+      mode: 'practice',
       cta: 'Open Frequencies'
     },
     {
@@ -4038,7 +4624,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: `Often called the "Earth's Heartbeat," ${SCHUMANN_RESONANCE_HZ}Hz is the common rounded reference for the fundamental Schumann resonance. In Focus Flow it is used as a low grounding anchor.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
-      mode: 'frequencies',
+      mode: 'practice',
       cta: 'Open Grounding Tones'
     },
     {
@@ -4046,7 +4632,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'When active, the app offsets the left and right carriers by 6Hz around the selected tone. Headphones are recommended for binaural perception; the displayed Hz remains the carrier center.',
       icon: Brain,
       iconClassName: 'text-blue-400',
-      mode: 'frequencies',
+      mode: 'practice',
       cta: 'Open Frequencies'
     },
     {
@@ -4062,7 +4648,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'The visualizer uses real-time audio analysis to generate sacred geometry patterns. These visuals are designed to be hypnotic and calming, helping to anchor your focus and facilitate a flow state through visual-auditory synchronization.',
       icon: Eye,
       iconClassName: 'text-purple-400',
-      mode: 'frequencies',
+      mode: 'practice',
       cta: 'Open Visualizer'
     },
     {
@@ -4070,7 +4656,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'Zen Mode removes all interface elements except the core experience. It is designed for deep work or meditation where you want zero distractions. Simply click the icon in the header to enter, and the "minimize" icon to exit.',
       icon: Maximize2,
       iconClassName: 'text-white',
-      mode: 'frequencies',
+      mode: 'practice',
       cta: 'Open Focus View'
     },
     {

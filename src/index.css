@@ -3,17 +3,34 @@
 
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-serif: "Cormorant Garamond", serif;
-
-  --color-app-bg: #f5f8f3;
-  --color-app-card: #ffffff;
-  --color-app-accent: #4f8f7a;
-  --color-app-gold: #c59b54;
-  --color-app-text: #23312c;
-  --color-app-muted: #6f7e76;
-
   --breakpoint-xs: 400px;
+
+  --color-brand-sage: #4f8f7a;
+  --color-brand-gold: #c59b54;
+
+  --color-app-bg: #141c19;
+  --color-app-surface: #1a2420;
+  --color-app-surface-raised: #223029;
+  --color-app-border: #2e403a;
+  --color-app-text: #e8efeb;
+  --color-app-muted: #93a49c;
+  --color-app-accent: #5FA68E;
+  --color-app-accent-ink: #7DBFA7;
+  --color-app-gold: #c59b54;
+}
+
+[data-theme="light"] {
+  --color-app-bg: #f5f8f3;
+  --color-app-surface: #ffffff;
+  --color-app-surface-raised: #eef5f1;
+  --color-app-border: #d8e5df;
+  --color-app-text: #23312c;
+  --color-app-muted: #5B6B63;
+  --color-app-accent: #4f8f7a;
+  --color-app-accent-ink: #3D7462;
+  --color-app-gold: #a8813d;
 }
 
 @layer utilities {
@@ -26,15 +43,16 @@
   body {
     @apply bg-app-bg text-app-text font-sans antialiased;
     background:
-      linear-gradient(115deg, rgba(245, 248, 243, 0.96), rgba(232, 243, 238, 0.9) 46%, rgba(248, 244, 232, 0.88)),
-      linear-gradient(180deg, #f8fbf7 0%, #edf5f1 52%, #f7f0e2 100%);
+      radial-gradient(circle at 18% 12%, rgba(95, 166, 142, 0.16), transparent 32%),
+      radial-gradient(circle at 86% 22%, rgba(197, 155, 84, 0.1), transparent 30%),
+      linear-gradient(180deg, #141c19 0%, #101613 100%);
   }
 }
 
 .glass {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(244, 250, 246, 0.58));
+  background: linear-gradient(135deg, rgba(26, 36, 32, 0.86), rgba(22, 31, 27, 0.68));
   backdrop-filter: blur(30px) saturate(135%);
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(232, 239, 235, 0.08);
 }
 
 .neon-glow {
@@ -43,13 +61,13 @@
 
 .premium-shell {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(241, 249, 245, 0.62)),
-    linear-gradient(180deg, rgba(197, 155, 84, 0.08), transparent 44%);
+    linear-gradient(145deg, rgba(26, 36, 32, 0.94), rgba(18, 26, 23, 0.86)),
+    linear-gradient(180deg, rgba(95, 166, 142, 0.08), transparent 44%);
   box-shadow:
-    0 44px 110px rgba(69, 94, 84, 0.2),
+    0 44px 110px rgba(0, 0, 0, 0.34),
     0 6px 22px rgba(197, 155, 84, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .premium-card {
@@ -209,13 +227,7 @@
 .zen-mood-card.is-selected {
   background:
     linear-gradient(135deg, rgba(79, 143, 122, 0.98), rgba(70, 130, 112, 0.94)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent) !important;
-}
-
-.luxury-zen .zen-mood-card.is-selected,
-.luxury-zen .zen-mood-card.is-selected span,
-.luxury-zen .zen-mood-card.is-selected p {
-  color: #ffffff !important;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent);
 }
 
 .zen-ritual-preview,
@@ -225,104 +237,28 @@
 
 .zen-ritual-preview {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(236, 247, 242, 0.58)),
-    linear-gradient(90deg, rgba(79, 143, 122, 0.08), transparent) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(95, 166, 142, 0.08)),
+    linear-gradient(90deg, rgba(79, 143, 122, 0.08), transparent);
 }
 
 .zen-studio {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(250, 244, 232, 0.6)) !important;
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(197, 155, 84, 0.08));
 }
 
 .zen-atmosphere {
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.76) 0%, rgba(237, 247, 242, 0.58) 38%, rgba(248, 241, 225, 0.54) 100%),
-    linear-gradient(62deg, transparent 0 18%, rgba(157, 183, 198, 0.18) 18% 26%, transparent 26% 62%, rgba(79, 143, 122, 0.12) 62% 70%, transparent 70%),
-    linear-gradient(180deg, #f9fbf8 0%, #eef6f2 48%, #f7efe1 100%);
+    radial-gradient(circle at 50% 30%, rgba(95, 166, 142, 0.12), transparent 40%),
+    linear-gradient(180deg, #141c19 0%, #101613 100%);
 }
 
-.luxury-zen .bg-black\/20,
-.luxury-zen .bg-black\/25,
-.luxury-zen .bg-black\/30,
-.luxury-zen .bg-black\/35,
-.luxury-zen .bg-black\/40,
-.luxury-zen .bg-black\/70,
-.luxury-zen .bg-zinc-700,
-.luxury-zen .bg-zinc-700\/50,
-.luxury-zen .bg-zinc-800,
-.luxury-zen .bg-zinc-800\/80,
-.luxury-zen .bg-zinc-900,
-.luxury-zen .bg-zinc-950 {
-  background-color: rgba(255, 255, 255, 0.54) !important;
-}
-
-.luxury-zen .bg-white\/5,
-.luxury-zen .bg-white\/8,
-.luxury-zen .bg-white\/10,
-.luxury-zen .bg-white\/15,
-.luxury-zen .bg-white\/20,
-.luxury-zen .bg-white\/\[0\.02\],
-.luxury-zen .bg-white\/\[0\.065\] {
-  background-color: rgba(255, 255, 255, 0.46) !important;
-}
-
-.luxury-zen .border-white\/5,
-.luxury-zen .border-white\/10,
-.luxury-zen .border-white\/20 {
-  border-color: rgba(79, 143, 122, 0.16) !important;
-}
-
-.luxury-zen .text-white,
-.luxury-zen .text-white\/80,
-.luxury-zen .text-white\/75,
-.luxury-zen .text-white\/60,
-.luxury-zen .text-white\/50,
-.luxury-zen .text-white\/40,
-.luxury-zen .text-white\/20 {
-  color: #24342f !important;
-}
-
-.luxury-zen .text-app-muted {
-  color: #6f7e76 !important;
-}
-
-.luxury-zen .text-emerald-300,
-.luxury-zen .text-emerald-400,
-.luxury-zen .text-blue-400,
-.luxury-zen .text-purple-400,
-.luxury-zen .text-sky-400 {
-  color: #4f8f7a !important;
-}
-
-.luxury-zen .from-zinc-800 {
-  --tw-gradient-from: #e4eee9 !important;
-  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position)) !important;
-}
-
-.luxury-zen .to-zinc-950 {
-  --tw-gradient-to: #cfded7 !important;
-}
-
-.luxury-zen input,
-.luxury-zen select {
-  color: #24342f;
-  background-color: rgba(255, 255, 255, 0.62) !important;
-  border-color: rgba(79, 143, 122, 0.18) !important;
-}
-
-.luxury-zen ::selection {
-  color: #ffffff;
-  background: #4f8f7a;
-}
-
-.luxury-zen main {
-  border: 1px solid rgba(255, 255, 255, 0.84);
-}
-
-.luxury-zen nav {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(240, 248, 244, 0.48)) !important;
-  border-right-color: rgba(79, 143, 122, 0.12) !important;
+.zen-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--session-wash, transparent);
+  transition: background 8s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 .zen-nav-button > div {
@@ -331,9 +267,9 @@
 
 .zen-nav-button.text-app-accent > div {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(221, 238, 231, 0.72)) !important;
+    linear-gradient(145deg, rgba(95, 166, 142, 0.18), rgba(95, 166, 142, 0.08));
   border-color: rgba(79, 143, 122, 0.16);
-  box-shadow: 0 14px 26px rgba(79, 143, 122, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 14px 26px rgba(79, 143, 122, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .zen-nav-button span {
@@ -342,33 +278,8 @@
 }
 
 .zen-nav-button.text-app-accent span {
-  color: #4f8f7a;
+  color: var(--color-app-accent);
   font-weight: 700;
-}
-
-.luxury-zen header {
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(244, 250, 246, 0.5));
-  border-bottom-color: rgba(79, 143, 122, 0.12) !important;
-}
-
-.luxury-zen header h1 {
-  font-size: clamp(1.8rem, 2.4vw, 2.45rem);
-  line-height: 0.9;
-}
-
-.luxury-zen header button,
-.luxury-zen header > div:last-child > div {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
-}
-
-.luxury-zen .bg-app-accent {
-  background-color: #4f8f7a !important;
-}
-
-.luxury-zen button.bg-app-accent,
-.luxury-zen .premium-button.bg-app-accent {
-  color: #ffffff !important;
 }
 
 .tapping-pulse {
@@ -399,4 +310,23 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-app-accent);
+  outline-offset: 3px;
+}
+
+canvas {
+  forced-color-adjust: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
 }
