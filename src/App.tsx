@@ -32,13 +32,13 @@ import {
   Upload,
   X,
   Star,
-  LayoutGrid,
-  Flower2
+  LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { BrandMark } from './components/BrandMark';
+import { Bloom } from './components/Bloom';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -2324,7 +2324,7 @@ export default function App() {
           <NavButton 
             active={mode === 'garden'} 
             onClick={() => setMode('garden')} 
-            icon={<Flower2 size={24} />} 
+            icon={<BrandMark tone="sage" />} 
             label="Garden" 
           />
           <NavButton 
@@ -3024,12 +3024,13 @@ function GardenView({ entries, onBegin }: { entries: GardenEntry[]; onBegin: () 
   const mostMoodLabel = MOOD_SESSION_PRESETS.find((mood) => mood.id === mostMoodId)?.label ?? 'None yet';
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
+  const visibleEntries = entries.slice(0, 60);
 
   if (entries.length === 0) {
     return (
       <section className="h-full flex items-center justify-center">
         <div className="text-center max-w-sm">
-          <Flower2 size={36} className="mx-auto text-app-accent mb-5" />
+          <BrandMark size={44} tone="gold" className="mx-auto mb-5" />
           <h2 className="text-3xl font-serif italic">Your garden is empty.</h2>
           <p className="text-sm text-app-muted mt-3 mb-6">Every session you finish plants something here.</p>
           <button onClick={onBegin} className="px-7 py-3 rounded-full bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold">Begin</button>
@@ -3043,42 +3044,33 @@ function GardenView({ entries, onBegin }: { entries: GardenEntry[]; onBegin: () 
       <div className="mb-5">
         <h2 className="text-4xl font-serif italic">Garden</h2>
       </div>
-      <div className="premium-card rounded-[36px] p-4 sm:p-6">
-        <svg viewBox="0 0 1000 560" className="relative z-10 w-full min-h-[360px]" role="img" aria-label="Your session garden">
-          <defs>
-            <radialGradient id="gardenField" cx="50%" cy="45%" r="75%">
-              <stop offset="0%" stopColor="#233129" />
-              <stop offset="100%" stopColor="#121a17" />
-            </radialGradient>
-          </defs>
-          <rect width="1000" height="560" rx="32" fill="url(#gardenField)" />
-          {entries.slice(0, 60).map((entry, index) => {
-            const seed = Array.from(entry.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-            const x = 80 + (seed * 37) % 840;
-            const y = 90 + (seed * 53) % 380;
-            const frequency = SOLFEGGIO_FREQUENCIES.find((freq) => freq.id === entry.frequencyId);
-            const color = frequency?.color ?? '#4F8F7A';
-            const size = Math.max(10, Math.min(34, entry.minutes * 1.2));
-            const opacity = Math.max(0.34, 1 - index * 0.018);
-            const petals = entry.moodId === 'focused' || entry.moodId === 'blocked' ? 8 : 6;
-            return (
-              <g key={entry.id} transform={`translate(${x} ${y})`} opacity={opacity}>
-                {Array.from({ length: petals }).map((_, petalIndex) => (
-                  <ellipse
-                    key={petalIndex}
-                    cx="0"
-                    cy={-size * 0.62}
-                    rx={size * 0.28}
-                    ry={size * 0.72}
-                    fill={color}
-                    transform={`rotate(${petalIndex * (360 / petals)})`}
-                  />
-                ))}
-                <circle r={size * 0.24} fill={index === 0 ? '#c59b54' : '#e8efeb'} />
-              </g>
-            );
-          })}
-        </svg>
+      <div
+        className="premium-card relative min-h-[420px] overflow-hidden rounded-[36px] bg-[radial-gradient(circle_at_50%_38%,#233129_0%,#121a17_70%)] p-4 sm:min-h-[560px] sm:p-6"
+        role="img"
+        aria-label="Your session garden"
+      >
+        {visibleEntries.map((entry, index) => {
+          const seed = Array.from(entry.id).reduce((sum, char) => sum + char.charCodeAt(0), 2166136261);
+          const depth = Math.max(0.28, 1 - index / Math.max(visibleEntries.length, 12));
+          const x = 8 + Math.abs(seed * 37) % 84;
+          const y = 12 + Math.abs(seed * 53) % 72;
+          const size = Math.round((74 + Math.sqrt(Math.min(entry.minutes, 30) / 30) * 78) * (0.72 + depth * 0.28));
+          const justPlanted = index === 0 && Date.now() - new Date(entry.completedAt).getTime() < 12000;
+
+          return (
+            <div
+              key={entry.id}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                zIndex: Math.round(depth * 100),
+              }}
+            >
+              <Bloom entry={entry} size={size} depth={depth} opening={justPlanted} />
+            </div>
+          );
+        })}
       </div>
       <p className="text-xs text-app-muted mt-4 text-center">
         {entries.length} sessions · {hours ? `${hours} hours ` : ''}{minutes} minutes · most often, {mostMoodLabel}

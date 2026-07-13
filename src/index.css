@@ -102,18 +102,6 @@
   mask-image: linear-gradient(180deg, black, transparent 78%);
 }
 
-.garden-bloom {
-  background:
-    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.96) 0 12%, transparent 13%),
-    conic-gradient(from 18deg, #f7c5d6, #fff3f7, #d8f0e6, #f4d28f, #f7c5d6);
-  color: #3d6f61;
-  box-shadow: 0 14px 28px rgba(79, 143, 122, 0.22), inset 0 0 14px rgba(255, 255, 255, 0.7);
-}
-
-.garden-bloom svg {
-  filter: drop-shadow(0 2px 5px rgba(79, 143, 122, 0.24));
-}
-
 .premium-button {
   box-shadow: 0 16px 34px rgba(79, 143, 122, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.48);
 }
