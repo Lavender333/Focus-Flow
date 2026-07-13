@@ -2684,7 +2684,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
       onClick={onClick}
       style={{ WebkitTapHighlightColor: 'transparent' }}
       className={cn(
-        "flex flex-col items-center gap-1.5 transition-all duration-300 group w-full cursor-pointer outline-none py-1",
+        "zen-nav-button flex flex-col items-center gap-1.5 transition-all duration-300 group w-full cursor-pointer outline-none py-1",
         active ? "text-app-accent" : "text-app-muted hover:text-white"
       )}
     >
@@ -2748,25 +2748,48 @@ function PracticeHub({
 
   return (
     <section className="mb-8 grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-4">
-      <div className="premium-card p-4 sm:p-5 rounded-[32px]">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 text-app-accent mb-2">
+      <div className="premium-card zen-arrival p-4 sm:p-5 rounded-[32px]">
+        <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 mb-5">
+          <div className="zen-arrival-copy">
+            <div className="flex items-center gap-2 text-app-accent mb-3">
               <Sparkles size={16} />
-              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Mood-to-Session Generator</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Private Ritual Concierge</span>
             </div>
-              <h2 className="text-2xl sm:text-4xl font-serif italic">Begin with an exhale.</h2>
-              <p className="text-xs sm:text-sm text-app-muted leading-relaxed mt-2 max-w-2xl">
-              Choose how you want to feel, and Focus Flow prepares a calm tone, gentle pulse, vocal guide, and timed ritual around it.
+            <h2 className="text-3xl sm:text-5xl font-serif italic leading-tight max-w-3xl">Step into a quieter room.</h2>
+            <p className="text-sm sm:text-base text-app-muted leading-relaxed mt-3 max-w-2xl">
+              Tell Focus Flow what your body is asking for. It sets the tone, pulse, breath guide, and session length like a calm attendant preparing the room.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="zen-chip">soft landing</span>
+              <span className="zen-chip">breath-led</span>
+              <span className="zen-chip">frequency tuned</span>
+            </div>
           </div>
 
+          <div className="zen-scene-panel" aria-hidden="true">
+            <div className="zen-sunline" />
+            <div className="zen-water" />
+            <div className="zen-stone zen-stone-one" />
+            <div className="zen-stone zen-stone-two" />
+            <div className="zen-scene-caption">
+              <span>Today's escape</span>
+              <strong>{selectedMood.sessionName}</strong>
+              <small>{selectedMood.minutes} min / {describeRitual(selectedMood)}</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Choose your arrival state</p>
+            <p className="text-xs text-app-muted mt-1">Each choice prepares a complete ritual, not just a sound.</p>
+          </div>
           <button
             onClick={() => onLaunchMoodSession(selectedMood.id)}
-            className="relative z-10 shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-app-accent text-black font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
+            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-app-accent text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
           >
             <Play size={14} fill="currentColor" />
-            Generate Session
+            Prepare Ritual
           </button>
         </div>
 
@@ -2776,20 +2799,20 @@ function PracticeHub({
               key={mood.id}
               onClick={() => onSelectMood(mood.id)}
               className={cn(
-                "min-h-[112px] text-left p-3 rounded-2xl border transition-all relative overflow-hidden",
+                "zen-mood-card min-h-[112px] text-left p-3 rounded-2xl border transition-all relative overflow-hidden",
                 selectedMoodId === mood.id
-                  ? "bg-app-accent text-black border-app-accent shadow-[0_18px_34px_rgba(110,231,183,0.18)]"
+                  ? "is-selected bg-app-accent text-white border-app-accent shadow-[0_18px_34px_rgba(79,143,122,0.18)]"
                   : "bg-black/25 border-white/10 text-white hover:bg-white/8 hover:border-white/20"
               )}
             >
               <div className={cn(
                 "absolute right-3 top-3 w-8 h-8 rounded-full border transition-opacity",
-                selectedMoodId === mood.id ? "border-black/20 bg-black/10" : "border-white/10 bg-white/5"
+                selectedMoodId === mood.id ? "border-white/35 bg-white/20" : "border-white/10 bg-white/5"
               )} />
-              <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", selectedMoodId === mood.id ? "text-black" : mood.colorClassName)}>
+              <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", selectedMoodId === mood.id ? "text-white" : mood.colorClassName)}>
                 {mood.label}
               </span>
-              <p className={cn("text-[10px] leading-tight mt-2", selectedMoodId === mood.id ? "text-black/70" : "text-app-muted")}>
+              <p className={cn("text-[10px] leading-tight mt-2", selectedMoodId === mood.id ? "text-white/80" : "text-app-muted")}>
                 {mood.feeling}
               </p>
             </button>
@@ -2797,11 +2820,10 @@ function PracticeHub({
         </div>
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
-          <div className="p-4 rounded-2xl bg-black/35 border border-white/10 relative overflow-hidden">
-            <div className="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-app-accent/10 blur-2xl" />
+          <div className="zen-ritual-preview p-4 rounded-2xl bg-black/35 border border-white/10 relative overflow-hidden">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Generated Path</p>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold">Prepared Path</p>
                 <h3 className="text-xl font-serif italic mt-1">{selectedMood.sessionName}</h3>
               </div>
               <span className="px-2 py-1 rounded-full bg-white/5 text-[9px] font-mono uppercase tracking-widest text-app-muted">
@@ -2829,10 +2851,10 @@ function PracticeHub({
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3">
+          <div className="zen-studio p-4 rounded-2xl bg-white/[0.065] border border-white/10 flex flex-col gap-3">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Ritual Studio</p>
-              <h3 className="text-lg font-serif italic">Save the mix</h3>
+              <h3 className="text-lg font-serif italic">Keep this room</h3>
             </div>
             <input
               value={ritualName}
