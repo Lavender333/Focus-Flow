@@ -69,6 +69,22 @@ function hasMediaSessionSupport() {
   return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
 }
 
+async function fireNativeImpact(intensity: number) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+    const style = intensity >= 0.72
+      ? ImpactStyle.Heavy
+      : intensity >= 0.42
+        ? ImpactStyle.Medium
+        : ImpactStyle.Light;
+    await Haptics.impact({ style });
+  } catch {
+    // Web browsers and desktops fall back to vibration/audio haptic simulation.
+  }
+}
+
 function useStudio() {
   const [hasStudio, setHasStudio] = useState(() => getStoredValue('focusflow_studio_unlocked') === 'true');
 
@@ -322,7 +338,7 @@ interface UserProfile {
   keepScreenOn: boolean;
 }
 
-type AppMode = 'home' | 'practice' | 'garden' | 'you' | 'studio' | 'tapping' | 'timer' | 'haptics' | 'profile' | 'guide' | 'chants' | 'handpan' | 'about' | 'reiki';
+type AppMode = 'home' | 'practice' | 'garden' | 'you' | 'studio';
 type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
@@ -885,6 +901,8 @@ export default function App() {
 
   // Haptics Helper
   const triggerHaptic = (pattern: number | number[] = 50) => {
+    const firstImpact = Array.isArray(pattern) ? pattern[0] : pattern;
+    void fireNativeImpact(Math.min(1, Math.max(0.18, firstImpact / 100)));
     if ('vibrate' in navigator) {
       navigator.vibrate(pattern);
     }
@@ -895,9 +913,16 @@ export default function App() {
     setStoredValue('focusflow_start_here_dismissed', 'true');
   };
 
-  const openModeFromStartHere = (nextMode: AppMode) => {
+  const openModeFromStartHere = (nextMode: AppMode | StudioMode | 'profile') => {
     dismissStartHere();
-    setMode(nextMode);
+    if (nextMode === 'profile') {
+      setMode('you');
+    } else if (['chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(nextMode)) {
+      setStudioMode(nextMode as StudioMode);
+      setMode('studio');
+    } else {
+      setMode(nextMode as AppMode);
+    }
     triggerHaptic(20);
   };
 
@@ -1429,15 +1454,21 @@ export default function App() {
       return;
     }
 
-    setMode(preset.mode);
+    if (['chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(preset.mode)) {
+      setStudioMode(preset.mode as StudioMode);
+      setMode('studio');
+    } else {
+      setMode(preset.mode as AppMode);
+    }
     triggerHaptic(20);
   }, [dismissStartHere, playFrequency]);
 
   useEffect(() => {
     if (masterGainNode.current && audioCtx.current) {
       const now = audioCtx.current.currentTime;
-      const targetGain = isMuted ? 0 : volume;
-      masterGainNode.current.gain.linearRampToValueAtTime(targetGain, now + 0.1);
+      const targetGain = isMuted ? 0.0001 : Math.max(0.0001, volume);
+      masterGainNode.current.gain.cancelScheduledValues(now);
+      masterGainNode.current.gain.setTargetAtTime(targetGain, now, 0.06);
     }
   }, [volume, isMuted]);
 
@@ -1495,12 +1526,15 @@ export default function App() {
 
   // Haptic Looper
   const hapticInterval = useRef<NodeJS.Timeout | null>(null);
+  const hapticTimers = useRef<NodeJS.Timeout[]>([]);
 
   const stopHaptic = useCallback(() => {
     if (hapticInterval.current) {
       clearInterval(hapticInterval.current);
       hapticInterval.current = null;
     }
+    hapticTimers.current.forEach((timer) => clearTimeout(timer));
+    hapticTimers.current = [];
     if ('vibrate' in navigator) {
       navigator.vibrate(0);
     }
@@ -1523,6 +1557,13 @@ export default function App() {
       if ('vibrate' in navigator) {
         navigator.vibrate(vibrationPattern);
       }
+
+      haptic.events.forEach((event) => {
+        const timer = setTimeout(() => {
+          void fireNativeImpact(event.intensity);
+        }, event.at);
+        hapticTimers.current.push(timer);
+      });
 
       if (useSimulatedHaptics || !('vibrate' in navigator)) {
         const ctx = initAudio();
@@ -1563,6 +1604,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (hapticInterval.current) clearInterval(hapticInterval.current);
+      hapticTimers.current.forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
@@ -2001,6 +2043,8 @@ export default function App() {
     const chant = ritual.chantId ? SONIC_CHANTS.find((entry) => entry.id === ritual.chantId) : null;
 
     setMode('practice');
+    setSessionPhase('settling');
+    setCompletedSession(null);
     setSelectedMoodId(ritual.moodId);
     setUserProfile((profile) => ({
       ...profile,
@@ -2268,7 +2312,7 @@ export default function App() {
                     analyzer={analyzer} 
                     activeColor={activeFreq?.color || '#00ff9d'} 
                     tappingPointIndex={tappingPointIndex}
-                    isTappingMode={mode === 'tapping'}
+                    isTappingMode={mode === 'studio' && studioMode === 'tapping'}
                   />
                 )}
                 <BreathingGuide isPlaying={isPlaying} />
@@ -2290,15 +2334,16 @@ export default function App() {
               <button 
                 onClick={() => {
                   dismissStartHere();
-                  setMode('guide');
+                  setStudioMode('guide');
+                  setMode('studio');
                 }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
-                  mode === 'guide' ? "bg-app-accent/20 border-app-accent text-app-accent" : "bg-white/5 border-white/10 hover:bg-white/10 text-app-muted"
+                  mode === 'studio' && studioMode === 'guide' ? "bg-app-accent/20 border-app-accent text-app-accent" : "bg-white/5 border-white/10 hover:bg-white/10 text-app-muted"
                 )}
               >
                 <BookOpen size={14} />
-                <span className="text-[10px] font-mono uppercase tracking-widest">Start Here</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest">Guide</span>
               </button>
               {userProfile.preferredFrequencyId && (
                 <button 
@@ -2321,7 +2366,7 @@ export default function App() {
                   )}
                 >
                   <Zap size={14} />
-                  <span className="text-[10px] font-mono uppercase tracking-widest">Quick Play</span>
+                  <span className="text-[10px] font-mono uppercase tracking-widest">Begin</span>
                 </button>
               )}
               <button 
@@ -2347,7 +2392,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shrink-0">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Schumann</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Earth Hum</span>
                 <button 
                   onClick={() => setIsSchumannActive(!isSchumannActive)}
                   className={cn(
@@ -2362,7 +2407,7 @@ export default function App() {
                 </button>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shrink-0">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Binaural</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Depth</span>
                 <button 
                   onClick={() => setIsHealingMode(!isHealingMode)}
                   className={cn(
@@ -2430,7 +2475,7 @@ export default function App() {
           {isZenMode && (
             <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center pointer-events-none">
               <AnimatePresence>
-                {mode === 'chants' && selectedChant && (
+                {mode === 'studio' && studioMode === 'chants' && selectedChant && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2526,6 +2571,7 @@ export default function App() {
                     sessionPhase={sessionPhase}
                     completedSession={completedSession}
                     onPlantSession={plantCompletedSession}
+                    onSkipSettle={() => setSessionPhase('running')}
                   />
 
                   {showStartHere && (
@@ -2589,7 +2635,7 @@ export default function App() {
 
                             <div className="p-4 rounded-2xl bg-app-accent/10 border border-app-accent/20 flex flex-col gap-3 justify-between">
                               <div>
-                                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold mb-2">One tap action</p>
+                                <p className="text-[10px] font-mono uppercase tracking-widest text-app-accent font-bold mb-2">Recommended</p>
                                 <p className="text-xs text-app-muted leading-relaxed">
                                   Focus Flow will take you straight into the matching mode so you can start instead of deciding between menus.
                                 </p>
@@ -2810,205 +2856,6 @@ export default function App() {
                 </motion.div>
               )}
 
-              {mode === 'tapping' && (
-                <motion.div 
-                  key="tapping"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full flex flex-col"
-                >
-                  <TappingView 
-                    triggerHaptic={triggerHaptic} 
-                    currentIndex={tappingPointIndex}
-                    onIndexChange={setTappingPointIndex}
-                  />
-                </motion.div>
-              )}
-
-              {mode === 'timer' && (
-                <motion.div 
-                  key="timer"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full flex items-center justify-center"
-                >
-                  <FocusTimerView 
-                    triggerHaptic={triggerHaptic} 
-                    profile={userProfile}
-                    onUpdateProfile={setUserProfile}
-                  />
-                </motion.div>
-              )}
-
-              {mode === 'haptics' && (
-                <motion.div 
-                  key="haptics"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="flex flex-col gap-6"
-                >
-                  {!hapticsSupported ? (
-                    <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs flex items-start gap-3">
-                      <Info size={16} className="shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-bold mb-1">Desktop Mode: Audio Simulation Active</p>
-                        <p className="opacity-80">Physical vibration is usually only available on mobile Chrome (Android/iOS). I've enabled **Audio Simulation** so you can still follow the patterns using subtle low-frequency pulses.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <Fingerprint size={16} className="text-app-accent" />
-                        <span className="text-xs font-mono uppercase tracking-widest">Audio Simulation</span>
-                      </div>
-                      <button 
-                        onClick={() => setUseSimulatedHaptics(!useSimulatedHaptics)}
-                        className={cn(
-                          "w-10 h-5 rounded-full transition-colors relative",
-                          useSimulatedHaptics ? "bg-app-accent" : "bg-white/20"
-                        )}
-                      >
-                        <div className={cn(
-                          "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
-                          useSimulatedHaptics ? "left-6" : "left-1"
-                        )} />
-                      </button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {HAPTIC_PATTERNS.map((h) => (
-                      <HapticCard 
-                        key={h.id}
-                        haptic={h}
-                        isActive={activeHaptic?.id === h.id}
-                        isPreferred={userProfile.preferredHapticId === h.id}
-                        onSetPreferred={() => {
-                          setUserProfile({ ...userProfile, preferredHapticId: h.id });
-                          triggerHaptic([30, 50]);
-                        }}
-                        onClick={() => {
-                          if (activeHaptic?.id === h.id) {
-                            stopHaptic();
-                          } else {
-                            playHaptic(h);
-                          }
-                        }}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {mode === 'chants' && (
-                <motion.div 
-                   key="chants"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
-                >
-                  <SonicChantView 
-                    triggerHaptic={triggerHaptic} 
-                    isMicActive={isMicActive}
-                    toggleMic={toggleMic}
-                    analyzer={analyzer}
-                    uploadedAudioUrl={uploadedAudioUrl}
-                    isAudioPlaying={isAudioPlaying}
-                    onUpload={handleAudioUpload}
-                    onTogglePlayback={toggleAudioPlayback}
-                    onRemove={removeUploadedAudio}
-                    isReferencePlaying={isReferencePlaying}
-                    activeReferenceId={activeReferenceId}
-                    onPlayReference={playReferenceTone}
-                    isAudioLoading={isAudioLoading}
-                    selectedChant={selectedChant}
-                    setSelectedChant={setSelectedChant}
-                    audioVolume={audioVolume}
-                    setIsZenMode={setIsZenMode}
-                    isDroneActive={isDroneActive}
-                    toggleDrone={toggleDrone}
-                    micPitch={micPitch}
-                  />
-                </motion.div>
-              )}
-
-              {mode === 'handpan' && (
-                <motion.div 
-                  key="handpan"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  className="h-full"
-                >
-                  <HandPanView 
-                    playNote={playHandPanNote} 
-                    triggerHaptic={triggerHaptic}
-                    isRecording={isRecording}
-                    recordedUrl={recordedUrl}
-                    onStartRecording={startRecording}
-                    onStopRecording={stopRecording}
-                    onDiscardRecording={() => {
-                      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-                      setRecordedUrl(null);
-                    }}
-                  />
-                </motion.div>
-              )}
-
-              {mode === 'profile' && (
-                <motion.div 
-                  key="profile"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
-                >
-                  <ProfileView 
-                    profile={userProfile} 
-                    onUpdate={setUserProfile} 
-                    triggerHaptic={triggerHaptic}
-                  />
-                </motion.div>
-              )}
-
-              {mode === 'guide' && (
-                <motion.div 
-                  key="guide"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
-                >
-                  <GuideView onStartQuickSession={startQuickSession} onOpenMode={openModeFromStartHere} />
-                </motion.div>
-              )}
-
-              {mode === 'about' && (
-                <motion.div 
-                  key="about"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
-                >
-                  <AboutView />
-                </motion.div>
-              )}
-
-              {mode === 'reiki' && (
-                <motion.div 
-                  key="reiki"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
-                >
-                  <ReikiView />
-                </motion.div>
-              )}
             </AnimatePresence>
           </div>
 
@@ -3217,7 +3064,21 @@ function YouView({
   onRestore: () => void;
 }) {
   const studioRevealed = sessionCount >= 3 || hasStudio;
-  const showOffer = sessionCount >= 5 && !hasStudio;
+  const [showOffer, setShowOffer] = useState(() => sessionCount >= 5 && !hasStudio && getStoredValue('focusflow_studio_offer_seen') !== 'true');
+
+  useEffect(() => {
+    if (showOffer) setStoredValue('focusflow_studio_offer_seen', 'true');
+  }, [showOffer]);
+
+  useEffect(() => {
+    if (hasStudio) setShowOffer(false);
+  }, [hasStudio]);
+
+  useEffect(() => {
+    if (sessionCount >= 5 && !hasStudio && getStoredValue('focusflow_studio_offer_seen') !== 'true') {
+      setShowOffer(true);
+    }
+  }, [sessionCount, hasStudio]);
 
   return (
     <section className="max-w-3xl mx-auto py-8 space-y-5">
@@ -3229,13 +3090,13 @@ function YouView({
         </button>
       )}
       {showOffer && (
-        <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />
+        <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} onDismiss={() => setShowOffer(false)} />
       )}
     </section>
   );
 }
 
-function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boolean; onUnlock: () => void; onRestore: () => void }) {
+function StudioUnlockCard({ hasStudio, onUnlock, onRestore, onDismiss }: { hasStudio: boolean; onUnlock: () => void; onRestore: () => void; onDismiss?: () => void }) {
   if (hasStudio) return null;
 
   return (
@@ -3247,8 +3108,16 @@ function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boole
         <div className="flex flex-wrap gap-3 mt-5">
           <button onClick={onUnlock} className="px-6 py-3 rounded-full bg-app-gold text-black font-mono text-[10px] uppercase tracking-widest font-bold">Unlock Studio</button>
           <button onClick={onRestore} className="px-6 py-3 rounded-full border border-white/10 text-app-muted font-mono text-[10px] uppercase tracking-widest">Restore purchases</button>
+          {onDismiss && (
+            <button onClick={onDismiss} className="px-6 py-3 rounded-full border border-white/10 text-app-muted font-mono text-[10px] uppercase tracking-widest">Not now</button>
+          )}
         </div>
-        <p className="text-[10px] text-app-muted mt-4">Terms of use and privacy policy live with the App Store listing. Focus Flow collects no data.</p>
+        <p className="text-[10px] text-app-muted mt-4">
+          <a className="underline hover:text-white" href="/Focus-Flow/terms.html">Terms of use</a>
+          {' '}and{' '}
+          <a className="underline hover:text-white" href="/Focus-Flow/privacy.html">privacy policy</a>
+          . Focus Flow collects no personal data.
+        </p>
       </div>
     </div>
   );
@@ -3335,7 +3204,8 @@ function PracticeHub({
   onCompleteSession,
   sessionPhase,
   completedSession,
-  onPlantSession
+  onPlantSession,
+  onSkipSettle
 }: {
   selectedMoodId: MoodId,
   onSelectMood: (moodId: MoodId) => void,
@@ -3348,7 +3218,8 @@ function PracticeHub({
   onCompleteSession: () => void,
   sessionPhase: SessionPhase,
   completedSession: Ritual | null,
-  onPlantSession: () => void
+  onPlantSession: () => void,
+  onSkipSettle: () => void
 }) {
   const selectedMood = MOOD_SESSION_PRESETS.find((mood) => mood.id === selectedMoodId) ?? MOOD_SESSION_PRESETS[0];
   const totalMinutes = gardenEntries.reduce((sum, entry) => sum + entry.minutes, 0);
@@ -3403,13 +3274,23 @@ function PracticeHub({
               {sessionPhase === 'settling' ? 'Settling in.' : sessionPhase === 'closing' ? 'Listen for the bell.' : 'Tap the closest feeling. The session changes around you.'}
             </p>
           </div>
-          <button
-            onClick={() => onLaunchMoodSession(selectedMood.id)}
-            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-app-accent text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
-          >
-            <Play size={14} fill="currentColor" />
-            Start My Reset
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {sessionPhase === 'settling' && (
+              <button
+                onClick={onSkipSettle}
+                className="shrink-0 px-4 py-3 rounded-full border border-white/10 text-app-muted hover:text-white hover:bg-white/5 transition-colors font-mono text-[10px] uppercase tracking-widest"
+              >
+                Skip
+              </button>
+            )}
+            <button
+              onClick={() => onLaunchMoodSession(selectedMood.id)}
+              className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-app-accent text-white font-mono text-[10px] uppercase tracking-widest font-bold hover:brightness-105 transition-all premium-button"
+            >
+              <Play size={14} fill="currentColor" />
+              Start My Reset
+            </button>
+          </div>
         </div>
 
         <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
@@ -4602,13 +4483,13 @@ function SonicChantView({
   );
 }
 
-function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: () => void, onOpenMode: (mode: AppMode) => void }) {
+function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: () => void, onOpenMode: (mode: AppMode | StudioMode | 'profile') => void }) {
   const guideTopics: Array<{
     title: string;
     description: string;
     icon: typeof Sparkles;
     iconClassName: string;
-    mode: AppMode;
+    mode: AppMode | StudioMode | 'profile';
     cta: string;
   }> = [
     {
@@ -4620,7 +4501,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       cta: 'Open Frequencies'
     },
     {
-      title: 'Schumann Resonance',
+      title: 'Earth Hum',
       description: `Often called the "Earth's Heartbeat," ${SCHUMANN_RESONANCE_HZ}Hz is the common rounded reference for the fundamental Schumann resonance. In Focus Flow it is used as a low grounding anchor.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
@@ -4628,7 +4509,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       cta: 'Open Grounding Tones'
     },
     {
-      title: 'Binaural Mode',
+      title: 'Depth Mode',
       description: 'When active, the app offsets the left and right carriers by 6Hz around the selected tone. Headphones are recommended for binaural perception; the displayed Hz remains the carrier center.',
       icon: Brain,
       iconClassName: 'text-blue-400',
@@ -4664,8 +4545,8 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'On mobile devices, haptics provide physical pulses to guide breathing or grounding. On desktop, low-frequency audio pulses simulate the pattern as a rhythmic practice anchor.',
       icon: Zap,
       iconClassName: 'text-app-accent',
-      mode: 'haptics',
-      cta: 'Open Haptics'
+      mode: 'practice',
+      cta: 'Open Practice'
     },
     {
       title: 'Sonic Vocalizations',
@@ -4713,7 +4594,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             <p className="text-xs text-app-muted leading-relaxed">Open tapping for a guided body-based reset.</p>
           </button>
           <button
-            onClick={() => onOpenMode('timer')}
+            onClick={() => onOpenMode('practice')}
             className="text-left p-4 rounded-2xl bg-black/30 border border-white/10 hover:bg-black/40 transition-colors"
           >
             <Timer size={16} className="text-blue-400 mb-3" />
