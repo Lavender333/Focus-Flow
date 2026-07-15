@@ -12,7 +12,8 @@ createRoot(document.getElementById('root')!).render(
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/Focus-Flow/sw.js', { scope: '/Focus-Flow/' })
+      .register('/Focus-Flow/sw.js', { scope: '/Focus-Flow/', updateViaCache: 'none' })
+      .then((registration) => registration.update())
       .catch((err) => console.warn('Service worker registration failed', err));
   });
 }
