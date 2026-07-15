@@ -2948,12 +2948,12 @@ function HomeView({
         })}
       </div>
 
-      <div className="premium-card rounded-[32px] p-6 sm:p-8 mb-5">
+      <div className="zen-choice-card rounded-[32px] p-6 sm:p-8 mb-5">
         <div className="relative z-10 flex flex-col items-center text-center gap-5">
           <div>
-            <h3 className="text-3xl font-serif italic">{selectedMood.sessionName}</h3>
-            <p className="text-sm text-app-muted mt-3">{selectedMood.feeling}</p>
-            <p className="text-sm text-app-muted mt-2">{selectedMood.minutes} minutes, {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
+            <h3 className="text-3xl font-serif italic text-white">{selectedMood.sessionName}</h3>
+            <p className="text-sm text-white/62 mt-3">{selectedMood.feeling}</p>
+            <p className="text-sm text-white/52 mt-2">{selectedMood.minutes} minutes, {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
           </div>
           <button
             onClick={() => onBegin(selectedMood.id)}
@@ -2975,16 +2975,16 @@ function HomeView({
                 exit={{ opacity: 0, height: 0 }}
                 className="grid w-full grid-cols-3 gap-2 overflow-hidden text-left"
               >
-                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                  <p className="text-[10px] text-app-muted">Tone</p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+                  <p className="text-[10px] text-white/46">Tone</p>
                   <p className="mt-1 text-sm">{frequency?.hz}Hz</p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                  <p className="text-[10px] text-app-muted">Pulse</p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+                  <p className="text-[10px] text-white/46">Pulse</p>
                   <p className="mt-1 truncate text-sm">{haptic?.label}</p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-                  <p className="text-[10px] text-app-muted">Guide</p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+                  <p className="text-[10px] text-white/46">Guide</p>
                   <p className="mt-1 text-sm">{chant?.sound ?? 'Silent'}</p>
                 </div>
               </motion.div>

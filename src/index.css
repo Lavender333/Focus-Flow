@@ -74,10 +74,13 @@
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(238, 248, 243, 0.62)),
-    linear-gradient(180deg, rgba(197, 155, 84, 0.055), transparent 52%);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 20px 54px rgba(70, 96, 84, 0.13);
+    linear-gradient(145deg, rgba(27, 40, 35, 0.9), rgba(14, 22, 19, 0.82)),
+    radial-gradient(circle at 18% 12%, rgba(197, 155, 84, 0.16), transparent 34%),
+    radial-gradient(circle at 82% 10%, rgba(79, 143, 122, 0.14), transparent 36%);
+  border: 1px solid rgba(232, 239, 235, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 239, 235, 0.1),
+    0 22px 60px rgba(0, 0, 0, 0.26);
 }
 
 .premium-card::before {
@@ -85,8 +88,20 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.34), transparent 22%, transparent 78%, rgba(197, 155, 84, 0.08));
-  opacity: 0.7;
+  background: linear-gradient(120deg, rgba(232, 239, 235, 0.08), transparent 28%, transparent 72%, rgba(197, 155, 84, 0.1));
+  opacity: 0.82;
+}
+
+.zen-choice-card {
+  background:
+    linear-gradient(145deg, rgba(24, 37, 32, 0.96), rgba(13, 22, 19, 0.9)),
+    radial-gradient(circle at 50% 0%, rgba(197, 155, 84, 0.18), transparent 44%),
+    radial-gradient(circle at 50% 100%, rgba(79, 143, 122, 0.16), transparent 48%);
+  border: 1px solid rgba(197, 155, 84, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 239, 235, 0.08),
+    0 28px 70px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(79, 143, 122, 0.08);
 }
 
 .premium-divider {
@@ -108,8 +123,9 @@
 
 .zen-arrival {
   background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(242, 249, 245, 0.7) 54%, rgba(251, 246, 235, 0.76)),
-    linear-gradient(90deg, rgba(79, 143, 122, 0.06), transparent 48%, rgba(197, 155, 84, 0.08));
+    linear-gradient(140deg, rgba(25, 38, 33, 0.96), rgba(13, 22, 19, 0.88) 58%, rgba(28, 35, 26, 0.9)),
+    radial-gradient(circle at 20% 0%, rgba(79, 143, 122, 0.14), transparent 40%),
+    radial-gradient(circle at 82% 6%, rgba(197, 155, 84, 0.13), transparent 42%);
 }
 
 .zen-arrival-copy {
@@ -128,26 +144,26 @@
   overflow: hidden;
   border-radius: 28px;
   padding: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(197, 155, 84, 0.18);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(232, 245, 239, 0.64)),
-    linear-gradient(90deg, rgba(79, 143, 122, 0.08), rgba(197, 155, 84, 0.07));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 18px 38px rgba(70, 96, 84, 0.1);
+    linear-gradient(145deg, rgba(28, 43, 37, 0.94), rgba(13, 22, 19, 0.84)),
+    radial-gradient(circle at 82% 0%, rgba(197, 155, 84, 0.12), transparent 46%);
+  box-shadow: inset 0 1px 0 rgba(232, 239, 235, 0.08), 0 18px 38px rgba(0, 0, 0, 0.18);
 }
 
 .zen-current-session::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-top: 4px solid rgba(79, 143, 122, 0.28);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.34), transparent 42%);
+  border-top: 4px solid rgba(197, 155, 84, 0.22);
+  background: linear-gradient(120deg, rgba(232, 239, 235, 0.08), transparent 42%);
   pointer-events: none;
 }
 
 .zen-current-kicker {
   position: relative;
   z-index: 1;
-  color: #4f8f7a;
+  color: #c59b54;
   font-family: var(--font-mono);
   font-size: 0.58rem;
   font-weight: 700;
@@ -158,7 +174,7 @@
 .zen-current-session strong {
   position: relative;
   z-index: 1;
-  color: #23312c;
+  color: #e8efeb;
   font-family: var(--font-serif);
   font-size: clamp(1.75rem, 3vw, 2.35rem);
   font-style: italic;
@@ -169,7 +185,7 @@
 .zen-current-session p {
   position: relative;
   z-index: 1;
-  color: #6f7e76;
+  color: rgba(232, 239, 235, 0.62);
   font-size: 0.9rem;
   line-height: 1.55;
 }
@@ -183,11 +199,11 @@
 }
 
 .zen-current-meta span {
-  border: 1px solid rgba(79, 143, 122, 0.16);
+  border: 1px solid rgba(232, 239, 235, 0.1);
   border-radius: 999px;
   padding: 0.34rem 0.55rem;
-  background: rgba(255, 255, 255, 0.54);
-  color: #53675f;
+  background: rgba(232, 239, 235, 0.06);
+  color: rgba(232, 239, 235, 0.68);
   font-family: var(--font-mono);
   font-size: 0.56rem;
   font-weight: 700;
@@ -195,14 +211,14 @@
 }
 
 .zen-mood-card {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62), 0 12px 24px rgba(70, 96, 84, 0.06);
+  box-shadow: inset 0 1px 0 rgba(232, 239, 235, 0.08), 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
 .zen-mood-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.32), transparent 42%);
+  background: linear-gradient(135deg, rgba(232, 239, 235, 0.07), transparent 42%);
   pointer-events: none;
 }
 
@@ -214,7 +230,7 @@
 
 .zen-ritual-preview,
 .zen-studio {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 18px 36px rgba(70, 96, 84, 0.08);
+  box-shadow: inset 0 1px 0 rgba(232, 239, 235, 0.08), 0 18px 36px rgba(0, 0, 0, 0.18);
 }
 
 .zen-ritual-preview {
@@ -225,7 +241,7 @@
 
 .zen-studio {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(197, 155, 84, 0.08));
+    linear-gradient(145deg, rgba(232, 239, 235, 0.055), rgba(197, 155, 84, 0.08));
 }
 
 .zen-atmosphere {
