@@ -93,14 +93,16 @@
 
 .zen-choice-card {
   background:
-    linear-gradient(145deg, rgba(24, 37, 32, 0.96), rgba(13, 22, 19, 0.9)),
-    radial-gradient(circle at 50% 0%, rgba(197, 155, 84, 0.18), transparent 44%),
-    radial-gradient(circle at 50% 100%, rgba(79, 143, 122, 0.16), transparent 48%);
-  border: 1px solid rgba(197, 155, 84, 0.28);
+    radial-gradient(circle at 82% 12%, rgba(197, 155, 84, 0.15) 0%, transparent 38%),
+    radial-gradient(circle at 18% 88%, rgba(79, 143, 122, 0.17) 0%, transparent 42%),
+    linear-gradient(145deg, rgba(33, 48, 42, 0.97) 0%, rgba(20, 32, 28, 0.95) 52%, rgba(12, 20, 17, 0.93) 100%);
+  border: 1px solid rgba(207, 168, 96, 0.3);
   box-shadow:
-    inset 0 1px 0 rgba(232, 239, 235, 0.08),
-    0 28px 70px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(79, 143, 122, 0.08);
+    0 28px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 45px rgba(79, 143, 122, 0.05);
+  backdrop-filter: blur(22px) saturate(115%);
+  -webkit-backdrop-filter: blur(22px) saturate(115%);
 }
 
 .premium-divider {
