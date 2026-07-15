@@ -88,18 +88,23 @@ async function fireNativeImpact(intensity: number) {
 
 function useStudio() {
   const [hasStudio, setHasStudio] = useState(() => getStoredValue('focusflow_studio_unlocked') === 'true');
+  const [purchaseError, setPurchaseError] = useState('');
 
   const refresh = useCallback(async () => {
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
-      if (import.meta.env.VITE_RC_KEY) {
-        await Purchases.configure({ apiKey: import.meta.env.VITE_RC_KEY });
+      const apiKey = import.meta.env.VITE_RC_KEY;
+      if (!apiKey) {
+        setPurchaseError('Studio purchases are not configured yet.');
+        return;
       }
+      await Purchases.configure({ apiKey });
       const customerInfo = await Purchases.getCustomerInfo();
       const active = Boolean(customerInfo.customerInfo?.entitlements.active.studio);
       setHasStudio(active);
       if (active) setStoredValue('focusflow_studio_unlocked', 'true');
     } catch {
+      setPurchaseError('Purchases are unavailable right now. Please try again later.');
       setHasStudio((current) => current);
     }
   }, []);
@@ -111,6 +116,12 @@ function useStudio() {
   const unlock = useCallback(async () => {
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
+      const apiKey = import.meta.env.VITE_RC_KEY;
+      if (!apiKey) {
+        setPurchaseError('Studio purchases are not configured yet.');
+        return;
+      }
+      await Purchases.configure({ apiKey });
       const offerings = await Purchases.getOfferings();
       const pack = offerings.current?.availablePackages[0];
       if (pack) {
@@ -120,14 +131,13 @@ function useStudio() {
         if (active) setStoredValue('focusflow_studio_unlocked', 'true');
         return;
       }
+      setPurchaseError('Studio is not available for purchase yet.');
     } catch {
-      // Fail open locally. The free app must never break because billing is unavailable.
+      setPurchaseError('Purchases are unavailable right now. Please try again later.');
     }
-    setHasStudio(true);
-    setStoredValue('focusflow_studio_unlocked', 'true');
   }, []);
 
-  return { hasStudio, unlock, restore: refresh };
+  return { hasStudio, unlock, restore: refresh, purchaseError };
 }
 
 // --- Types & Constants ---
@@ -324,7 +334,6 @@ const PRESET_LIBRARY = [
   { id: 'delta-sleep', label: 'Delta Deep Sleep', url: 'https://assets.mixkit.co/sfx/preview/mixkit-deep-meditation-atmosphere-2104.mp3', category: 'Brainwave' },
   { id: 'handpan-melodic', label: 'Hand Pan Melodic', url: 'https://assets.mixkit.co/sfx/preview/mixkit-hand-pan-melodic-strike-2194.mp3', category: 'Instrument' },
   { id: 'handpan-meditation', label: 'Hand Pan Zen', url: 'https://assets.mixkit.co/sfx/preview/mixkit-hand-pan-meditation-hit-2195.mp3', category: 'Instrument' },
-  { id: 'test-sound', label: 'System Test', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', category: 'System' }
 ];
 
 interface UserProfile {
@@ -1320,7 +1329,7 @@ export default function App() {
         artist: 'Focus Flow',
         album: 'Solfeggio Frequencies',
         artwork: [
-          { src: 'https://picsum.photos/seed/focus/512/512', sizes: '512x512', type: 'image/png' }
+          { src: new URL('icon-512.png', window.location.href).href, sizes: '512x512', type: 'image/png' }
         ]
       });
       navigator.mediaSession.playbackState = 'playing';
@@ -2679,6 +2688,7 @@ export default function App() {
                     hasStudio={studio.hasStudio}
                     onUnlock={studio.unlock}
                     onRestore={studio.restore}
+                    purchaseError={studio.purchaseError}
                     studioContent={{
                       chants: (
                         <SonicChantView
@@ -3146,10 +3156,10 @@ function StudioUnlockCard({ hasStudio, onUnlock, onRestore, onDismiss }: { hasSt
           )}
         </div>
         <p className="text-[10px] text-app-muted mt-4">
-          <a className="underline hover:text-white" href="/Focus-Flow/terms.html">Terms of use</a>
+          <a className="underline hover:text-white" href="terms.html">Terms of use</a>
           {' '}and{' '}
-          <a className="underline hover:text-white" href="/Focus-Flow/privacy.html">privacy policy</a>
-          . Focus Flow collects no personal data.
+          <a className="underline hover:text-white" href="privacy.html">privacy policy</a>
+          . Focus Flow does not sell personal data.
         </p>
       </div>
     </div>
@@ -3162,6 +3172,7 @@ function StudioView({
   hasStudio,
   onUnlock,
   onRestore,
+  purchaseError,
   studioContent
 }: {
   studioMode: StudioMode;
@@ -3169,6 +3180,7 @@ function StudioView({
   hasStudio: boolean;
   onUnlock: () => void;
   onRestore: () => void;
+  purchaseError: string;
   studioContent: Record<StudioMode, React.ReactNode>;
 }) {
   const modes: Array<{ id: StudioMode; label: string }> = [
@@ -3193,7 +3205,14 @@ function StudioView({
           </button>
         ))}
       </div>
-      {!hasStudio && <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />}
+      {!hasStudio && (
+        <>
+          <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />
+          {purchaseError && (
+            <p className="text-xs text-app-gold/80 leading-relaxed">{purchaseError}</p>
+          )}
+        </>
+      )}
       <div className={cn("min-h-0 flex-1", !hasStudio && "opacity-80")}>{studioContent[studioMode]}</div>
     </section>
   );

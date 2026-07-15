@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp dist/app.html dist/index.html && cp dist/index.html index.html && mkdir -p assets && cp -R dist/assets/. assets/ && cp dist/manifest.webmanifest dist/sw.js dist/*.png dist/*.svg dist/favicon.ico dist/privacy.html dist/terms.html .",
+    "build": "vite build && node scripts/copy_web_build.mjs",
     "build:ios": "VITE_BASE_PATH=./ vite build && cp dist/app.html dist/index.html",
     "sync:ios": "npm run build:ios && npx cap sync ios",
     "open:ios": "npm run sync:ios && npx cap open ios",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "audit:frequencies": "node scripts/audit_frequencies.mjs"
+    "audit:frequencies": "node scripts/audit_frequencies.mjs",
+    "preflight:app-store": "node scripts/preflight_app_store.mjs",
+    "build:app-store": "npm run preflight:app-store && npm run sync:ios"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.1",
