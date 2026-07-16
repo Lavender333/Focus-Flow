@@ -959,6 +959,7 @@ export default function App() {
     const starterFrequency = SOLFEGGIO_FREQUENCIES.find(
       (frequency) => frequency.id === (userProfile.preferredFrequencyId ?? '528')
     ) ?? SOLFEGGIO_FREQUENCIES[0];
+    const hapticId = userProfile.preferredHapticId ?? hapticIdForFrequency(starterFrequency.id);
 
     dismissStartHere();
     setMode('session');
@@ -970,14 +971,14 @@ export default function App() {
       name: starterFrequency.label,
       moodId: selectedMoodId,
       frequencyId: starterFrequency.id,
-      hapticId: userProfile.preferredHapticId ?? 'focus',
+      hapticId,
       minutes: userProfile.focusMinutes,
       useSchumann: isSchumannActive,
       healingMode: isHealingMode,
       createdAt: new Date().toISOString()
     });
     playFrequency(starterFrequency);
-    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === (userProfile.preferredHapticId ?? hapticIdForFrequency(starterFrequency.id)));
+    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === hapticId);
     if (haptic) playHaptic(haptic);
     triggerHaptic([30, 20, 30]);
     window.setTimeout(() => {
@@ -1399,18 +1400,23 @@ export default function App() {
       // Headphones are recommended; the displayed Hz remains the carrier center.
       osc1.frequency.setValueAtTime(freq.hz - 3, now);
       osc2.frequency.setValueAtTime(freq.hz + 3, now);
-      
-      const panner1 = ctx.createStereoPanner();
-      const panner2 = ctx.createStereoPanner();
+
       const g1 = ctx.createGain();
       const g2 = ctx.createGain();
-      panner1.pan.setValueAtTime(-0.7, now);
-      panner2.pan.setValueAtTime(0.7, now);
-      
       osc1.connect(g1);
       osc2.connect(g2);
-      g1.connect(panner1).connect(gainNode.current!);
-      g2.connect(panner2).connect(gainNode.current!);
+
+      if ('createStereoPanner' in ctx) {
+        const panner1 = ctx.createStereoPanner();
+        const panner2 = ctx.createStereoPanner();
+        panner1.pan.setValueAtTime(-1, now);
+        panner2.pan.setValueAtTime(1, now);
+        g1.connect(panner1).connect(gainNode.current!);
+        g2.connect(panner2).connect(gainNode.current!);
+      } else {
+        g1.connect(gainNode.current!);
+        g2.connect(gainNode.current!);
+      }
       oscillator2.current = osc2;
       osc2.start();
     } else {
@@ -1510,6 +1516,8 @@ export default function App() {
           createdAt: new Date().toISOString()
         });
         playFrequency(targetFrequency);
+        const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === hapticId);
+        if (haptic) playHaptic(haptic);
       }
       triggerHaptic([30, 20, 30]);
       window.setTimeout(() => {
