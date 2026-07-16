@@ -353,6 +353,7 @@ type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about'
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
+const FREE_STUDIO_MODES: StudioMode[] = ['tapping', 'guide', 'about'];
 
 interface SessionIntentionPreset {
   id: SessionIntentionId;
@@ -2416,15 +2417,13 @@ export default function App() {
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto justify-start sm:justify-end overflow-visible pb-1 sm:pb-0">
               <button 
-                onClick={() => {
+                onClick={(event) => {
+                  event.currentTarget.blur();
                   dismissStartHere();
                   setStudioMode('guide');
                   setMode('studio');
                 }}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
-                  mode === 'studio' && studioMode === 'guide' ? "bg-app-accent/20 border-app-accent text-app-accent" : "bg-white/5 border-white/10 hover:bg-white/10 text-app-muted"
-                )}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-app-muted transition-all shrink-0 hover:bg-white/10 hover:text-app-accent"
               >
                 <BookOpen size={14} />
                 <span className="text-[10px] font-mono uppercase tracking-widest">Guide</span>
@@ -2638,7 +2637,7 @@ export default function App() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="h-full"
+                  className="min-h-full"
                 >
                   <SessionView
                     analyzer={analyzer}
@@ -2659,7 +2658,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
+                  className="min-h-full"
                 >
                   <GardenView
                     entries={gardenEntries}
@@ -2674,7 +2673,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
+                  className="min-h-full"
                 >
                   <YouView
                     profile={userProfile}
@@ -2694,7 +2693,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="h-full"
+                  className="min-h-full"
                 >
                   <StudioView
                     studioMode={studioMode}
@@ -3207,8 +3206,8 @@ function StudioView({
   ];
 
   return (
-    <section className="h-full flex flex-col gap-5">
-      <div className="flex flex-wrap gap-2">
+    <section className="min-h-full flex flex-col gap-5 pb-20">
+      <div className="flex flex-wrap gap-2 shrink-0">
         {modes.map((item) => (
           <button
             key={item.id}
@@ -3219,7 +3218,7 @@ function StudioView({
           </button>
         ))}
       </div>
-      {!hasStudio && (
+      {!hasStudio && !FREE_STUDIO_MODES.includes(studioMode) && (
         <>
           <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />
           {purchaseError && (
@@ -3227,7 +3226,7 @@ function StudioView({
           )}
         </>
       )}
-      <div className={cn("min-h-0 flex-1", !hasStudio && "opacity-80")}>{studioContent[studioMode]}</div>
+      <div className={cn("min-h-0 flex-1", !hasStudio && !FREE_STUDIO_MODES.includes(studioMode) && "opacity-80")}>{studioContent[studioMode]}</div>
     </section>
   );
 }
@@ -3527,7 +3526,7 @@ function TappingView({
   }, [isAutoPlaying, next]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 sm:gap-8 pb-8 sm:pb-12 select-none">
+    <div className="min-h-full flex flex-col items-center justify-start sm:justify-center gap-4 sm:gap-8 px-1 pb-24 sm:pb-12 select-none">
       <div className="text-center max-w-sm px-4">
         <h2 className="text-xl sm:text-3xl font-serif italic mb-1 sm:mb-2">Guided Tapping</h2>
         <p className="text-[10px] sm:text-sm text-app-muted">Tap gently on the indicated point while repeating the affirmation below.</p>
@@ -3609,7 +3608,7 @@ function TappingView({
         </button>
       </div>
 
-      <div className="flex flex-col items-center gap-4 sm:gap-6">
+      <div className="flex flex-col items-center gap-4 sm:gap-6 shrink-0">
         <div className="flex gap-1.5 sm:gap-2">
           {TAPPING_POINTS.map((_, i) => (
             <div 
@@ -4364,7 +4363,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
   ];
 
   return (
-    <div className="h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-2 pb-12">
+    <div className="min-h-full flex flex-col gap-8 pr-1 sm:pr-2 pb-28 sm:pb-16">
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-serif italic mb-1">The Focus Flow Guide</h2>
         <p className="text-sm text-app-muted">Understanding the science and purpose behind your neural harmony tools.</p>
