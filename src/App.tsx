@@ -3,6 +3,7 @@ import {
   Play, 
   Pause, 
   RotateCcw, 
+  ArrowLeft,
   Zap, 
   Volume2, 
   VolumeX, 
@@ -81,6 +82,7 @@ async function fireNativeImpact(intensity: number) {
         ? ImpactStyle.Medium
         : ImpactStyle.Light;
     await Haptics.impact({ style });
+    await Haptics.vibrate({ duration: Math.round(12 + intensity * 28) });
   } catch {
     // Web browsers and desktops fall back to vibration/audio haptic simulation.
   }
@@ -783,12 +785,13 @@ function SacredGeometry({
 }
 
 function BreathingGuide({ isPlaying }: { isPlaying: boolean }) {
-  const [breathText, setBreathText] = useState('Inhale');
+  const [breathText, setBreathText] = useState('Inhale through nose');
 
   useEffect(() => {
     if (!isPlaying) return;
+    setBreathText('Inhale through nose');
     const interval = setInterval(() => {
-      setBreathText((prev) => (prev === 'Inhale' ? 'Exhale' : 'Inhale'));
+      setBreathText((prev) => (prev.startsWith('Inhale') ? 'Exhale slowly' : 'Inhale through nose'));
     }, 4000);
     return () => clearInterval(interval);
   }, [isPlaying]);
@@ -831,7 +834,7 @@ function BreathingGuide({ isPlaying }: { isPlaying: boolean }) {
             animate={{ opacity: 0.6, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 1.5, ease: "easeInOut" }}
-            className="absolute text-[12px] sm:text-sm font-mono uppercase tracking-[0.5em] text-white mt-[180px] sm:mt-[300px]"
+            className="absolute text-center text-[10px] sm:text-sm font-mono uppercase tracking-[0.24em] sm:tracking-[0.42em] text-white mt-[180px] sm:mt-[300px]"
           >
             {breathText}
           </motion.div>
@@ -974,7 +977,9 @@ export default function App() {
       createdAt: new Date().toISOString()
     });
     playFrequency(starterFrequency);
-    triggerHaptic(20);
+    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === (userProfile.preferredHapticId ?? hapticIdForFrequency(starterFrequency.id)));
+    if (haptic) playHaptic(haptic);
+    triggerHaptic([30, 20, 30]);
     window.setTimeout(() => {
       setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
     }, 18000);
@@ -1492,12 +1497,13 @@ export default function App() {
       setCompletedSession(null);
       setSessionRemainingSeconds(Math.max(30, userProfile.focusMinutes * 60));
       if (targetFrequency) {
+        const hapticId = userProfile.preferredHapticId ?? hapticIdForFrequency(targetFrequency.id);
         setActiveGeneratedSession({
           id: `intent-${Date.now()}`,
           name: preset.actionLabel.replace(/^Start\s+/i, ''),
           moodId: selectedMoodId,
           frequencyId: targetFrequency.id,
-          hapticId: userProfile.preferredHapticId ?? 'focus',
+          hapticId,
           minutes: userProfile.focusMinutes,
           useSchumann: isSchumannActive,
           healingMode: isHealingMode,
@@ -1505,7 +1511,7 @@ export default function App() {
         });
         playFrequency(targetFrequency);
       }
-      triggerHaptic([20, 40]);
+      triggerHaptic([30, 20, 30]);
       window.setTimeout(() => {
         setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
       }, 18000);
@@ -2144,6 +2150,16 @@ export default function App() {
     applyRitual(ritual);
   }, [applyRitual]);
 
+  const enterZenMode = useCallback(() => {
+    dismissStartHere();
+    setIsZenMode(true);
+    if (mode === 'home') {
+      launchMoodSession(selectedMoodId);
+    } else {
+      triggerHaptic([20, 30]);
+    }
+  }, [dismissStartHere, launchMoodSession, mode, selectedMoodId, triggerHaptic]);
+
   const completeGardenSession = useCallback(() => {
     if (sessionPhase === 'closing' || sessionPhase === 'complete') return;
 
@@ -2229,6 +2245,7 @@ export default function App() {
     stopAll();
     setActiveGeneratedSession(null);
     setCompletedSession(null);
+    setIsZenMode(false);
     setMode('home');
   }, [stopAll]);
 
@@ -2445,7 +2462,7 @@ export default function App() {
                 </button>
               )}
               <button 
-                onClick={() => setIsZenMode(true)}
+                onClick={enterZenMode}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
               >
                 <Maximize2 size={14} className="text-app-accent" />
@@ -2883,6 +2900,16 @@ function SessionView({
         transition={{ duration: 0.8 }}
         className="relative z-10 flex h-full min-h-screen flex-col items-center justify-end px-6 pb-12 text-center"
       >
+        {sessionPhase !== 'complete' && (
+          <button
+            onClick={onStop}
+            className="absolute left-4 top-5 sm:left-8 sm:top-8 flex items-center gap-2 rounded-full border border-white/12 bg-black/28 px-4 py-2 text-white/72 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Back to home"
+          >
+            <ArrowLeft size={16} />
+            <span className="text-[10px] font-mono uppercase tracking-widest">Back</span>
+          </button>
+        )}
         <div className="mb-8 max-w-md">
           <h1 className="text-3xl sm:text-5xl font-serif italic leading-tight">
             {sessionPhase === 'complete' ? 'Bloom ready.' : session?.name ?? activeFreq?.label ?? 'Session'}
@@ -2896,6 +2923,11 @@ function SessionView({
                   ? 'You finished the session.'
                   : formatTime(remainingSeconds)}
           </p>
+          {sessionPhase !== 'complete' && (
+            <p className="mt-2 text-[11px] font-mono uppercase tracking-[0.24em] text-white/42">
+              Inhale through nose · exhale slowly
+            </p>
+          )}
         </div>
 
         {sessionPhase === 'complete' ? (
