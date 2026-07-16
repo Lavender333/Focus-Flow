@@ -134,7 +134,16 @@ function useStudio() {
         return;
       }
       setPurchaseError('Studio is not available for purchase yet.');
-    } catch {
+    } catch (error) {
+      const purchaseError = error as { userCancelled?: boolean; code?: string; message?: string };
+      if (
+        purchaseError.userCancelled ||
+        purchaseError.code === 'PurchaseCancelledError' ||
+        purchaseError.message?.toLowerCase().includes('cancel')
+      ) {
+        setPurchaseError('');
+        return;
+      }
       setPurchaseError('Purchases are unavailable right now. Please try again later.');
     }
   }, []);
@@ -927,6 +936,7 @@ export default function App() {
 
   const [activeReferenceId, setActiveReferenceId] = useState<string | null>(null);
   const [audioContextState, setAudioContextState] = useState<AudioContextState>('suspended');
+  const studioWasUnlocked = useRef(studio.hasStudio);
 
   // Haptics Helper
   const triggerHaptic = (pattern: number | number[] = 50) => {
@@ -936,6 +946,13 @@ export default function App() {
       navigator.vibrate(pattern);
     }
   };
+
+  useEffect(() => {
+    if (!studioWasUnlocked.current && studio.hasStudio) {
+      triggerHaptic(10);
+    }
+    studioWasUnlocked.current = studio.hasStudio;
+  }, [studio.hasStudio]);
 
   const dismissStartHere = () => {
     setShowStartHere(false);
@@ -2709,8 +2726,6 @@ export default function App() {
                     sessionCount={gardenEntries.length}
                     hasStudio={studio.hasStudio}
                     onOpenStudio={() => setMode('studio')}
-                    onUnlock={studio.unlock}
-                    onRestore={studio.restore}
                   />
                 </motion.div>
               )}
@@ -3173,34 +3188,15 @@ function YouView({
   onUpdate,
   sessionCount,
   hasStudio,
-  onOpenStudio,
-  onUnlock,
-  onRestore
+  onOpenStudio
 }: {
   profile: UserProfile;
   onUpdate: (profile: UserProfile) => void;
   sessionCount: number;
   hasStudio: boolean;
   onOpenStudio: () => void;
-  onUnlock: () => void;
-  onRestore: () => void;
 }) {
   const studioRevealed = sessionCount >= 3 || hasStudio;
-  const [showOffer, setShowOffer] = useState(() => sessionCount >= 5 && !hasStudio && getStoredValue('focusflow_studio_offer_seen') !== 'true');
-
-  useEffect(() => {
-    if (showOffer) setStoredValue('focusflow_studio_offer_seen', 'true');
-  }, [showOffer]);
-
-  useEffect(() => {
-    if (hasStudio) setShowOffer(false);
-  }, [hasStudio]);
-
-  useEffect(() => {
-    if (sessionCount >= 5 && !hasStudio && getStoredValue('focusflow_studio_offer_seen') !== 'true') {
-      setShowOffer(true);
-    }
-  }, [sessionCount, hasStudio]);
 
   return (
     <section className="max-w-3xl mx-auto py-8 space-y-5">
@@ -3211,36 +3207,39 @@ function YouView({
           <h3 className="relative z-10 text-2xl font-serif italic">A quieter room</h3>
         </button>
       )}
-      {showOffer && (
-        <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} onDismiss={() => setShowOffer(false)} />
-      )}
     </section>
   );
 }
 
-function StudioUnlockCard({ hasStudio, onUnlock, onRestore, onDismiss }: { hasStudio: boolean; onUnlock: () => void; onRestore: () => void; onDismiss?: () => void }) {
+function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boolean; onUnlock: () => void; onRestore: () => void }) {
   if (hasStudio) return null;
 
   return (
-    <div className="premium-card rounded-[28px] p-6">
-      <div className="relative z-10">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-app-gold mb-3">Studio</p>
-        <h3 className="text-3xl font-serif italic">No subscription. Not now, not later.</h3>
-        <p className="text-sm text-app-muted mt-3">You buy it once and it is yours. Studio unlock is $19.99.</p>
-        <div className="flex flex-wrap gap-3 mt-5">
-          <button onClick={onUnlock} className="px-6 py-3 rounded-full bg-app-gold text-black font-mono text-[10px] uppercase tracking-widest font-bold">Unlock Studio</button>
-          <button onClick={onRestore} className="px-6 py-3 rounded-full border border-white/10 text-app-muted font-mono text-[10px] uppercase tracking-widest">Restore purchases</button>
-          {onDismiss && (
-            <button onClick={onDismiss} className="px-6 py-3 rounded-full border border-white/10 text-app-muted font-mono text-[10px] uppercase tracking-widest">Not now</button>
-          )}
-        </div>
-        <p className="text-[10px] text-app-muted mt-4">
-          <a className="underline hover:text-white" href="terms.html">Terms of use</a>
-          {' '}and{' '}
-          <a className="underline hover:text-white" href="privacy.html">privacy policy</a>
-          . Focus Flow does not sell personal data.
-        </p>
+    <div className="relative z-20 mx-auto w-full max-w-md rounded-[32px] border border-app-gold/20 bg-[#111815]/95 p-6 text-center shadow-[0_32px_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+      <h3 className="text-3xl font-serif italic leading-tight">No subscription. Not now, not later.</h3>
+      <p className="mt-2 text-lg font-serif italic text-white/82">You buy it once and it is yours.</p>
+
+      <div className="mt-6 space-y-2 text-sm text-app-muted">
+        <p>Chants and pitch-guided voice</p>
+        <p>Handpan and reiki practices</p>
+        <p>Custom rituals you build yourself</p>
+        <p>The full bloom set in your garden</p>
       </div>
+
+      <p className="mt-7 text-3xl font-serif italic text-app-gold">$19.99</p>
+
+      <button
+        onClick={onUnlock}
+        className="mt-5 w-full rounded-full bg-app-gold px-7 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-black premium-button"
+      >
+        Unlock Studio
+      </button>
+      <button
+        onClick={onRestore}
+        className="mt-4 text-[11px] text-app-muted underline-offset-4 transition-colors hover:text-white hover:underline"
+      >
+        Restore purchases
+      </button>
     </div>
   );
 }
@@ -3270,9 +3269,10 @@ function StudioView({
     { id: 'guide', label: 'Guide' },
     { id: 'about', label: 'About' }
   ];
+  const studioLocked = !hasStudio && !FREE_STUDIO_MODES.includes(studioMode);
 
   return (
-    <section className="min-h-full flex flex-col gap-5 pb-20">
+    <section className="relative min-h-full flex flex-col gap-5 pb-20">
       <div className="flex flex-wrap gap-2 shrink-0">
         {modes.map((item) => (
           <button
@@ -3284,15 +3284,26 @@ function StudioView({
           </button>
         ))}
       </div>
-      {!hasStudio && !FREE_STUDIO_MODES.includes(studioMode) && (
-        <>
+      <div
+        className={cn(
+          "min-h-0 flex-1 transition-all duration-500",
+          studioLocked && "pointer-events-none select-none opacity-38 blur-[1px]"
+        )}
+        aria-hidden={studioLocked}
+      >
+        {studioContent[studioMode]}
+      </div>
+      {studioLocked && (
+        <div className="absolute inset-x-0 top-16 z-10 flex justify-center px-2 sm:px-4">
+          <div className="absolute inset-x-0 top-0 h-[calc(100vh-180px)] bg-[#0c1411]/35 backdrop-blur-[2px]" />
           <StudioUnlockCard hasStudio={hasStudio} onUnlock={onUnlock} onRestore={onRestore} />
+          <div className="absolute top-full mt-3 w-full max-w-md text-center">
           {purchaseError && (
             <p className="text-xs text-app-gold/80 leading-relaxed">{purchaseError}</p>
           )}
-        </>
+          </div>
+        </div>
       )}
-      <div className={cn("min-h-0 flex-1", !hasStudio && !FREE_STUDIO_MODES.includes(studioMode) && "opacity-80")}>{studioContent[studioMode]}</div>
     </section>
   );
 }
