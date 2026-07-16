@@ -2331,6 +2331,17 @@ export default function App() {
     osc.stop(now + 3.1);
     harmonic1.stop(now + 3.1);
     harmonic2.stop(now + 3.1);
+    noise.stop(now + 0.05);
+
+    window.setTimeout(() => {
+      [osc, harmonic1, harmonic2, noise, noteGain, h1Gain, h2Gain, noiseFilter, noiseGain, resonator].forEach((node) => {
+        try {
+          node.disconnect();
+        } catch {
+          // Already disconnected or ended.
+        }
+      });
+    }, 3400);
   }, [initAudio]);
 
   return (
@@ -4761,6 +4772,7 @@ function HandPanView({
   const [isMobile, setIsMobile] = useState(false);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activeNoteTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -4779,11 +4791,30 @@ function HandPanView({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (activeNoteTimer.current) window.clearTimeout(activeNoteTimer.current);
+    };
+  }, []);
+
   const handleNotePress = (note: typeof HANDPAN_NOTES[0]) => {
     playNote(note.freq);
     setActiveNote(note.id);
     triggerHaptic(30);
-    setTimeout(() => setActiveNote(null), 300);
+    if (activeNoteTimer.current) window.clearTimeout(activeNoteTimer.current);
+    activeNoteTimer.current = window.setTimeout(() => setActiveNote(null), 300);
+  };
+
+  const handleNotePointerDown = (event: React.PointerEvent<HTMLButtonElement>, note: typeof HANDPAN_NOTES[0]) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleNotePress(note);
+  };
+
+  const handleNoteKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, note: typeof HANDPAN_NOTES[0]) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleNotePress(note);
   };
 
   const handleExport = async () => {
@@ -4820,7 +4851,7 @@ function HandPanView({
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-start sm:justify-center p-4 min-h-[400px] select-none touch-none overflow-y-auto custom-scrollbar">
+    <div className="min-h-full flex flex-col items-center justify-start sm:justify-center p-4 pb-24 sm:pb-8 select-none touch-pan-y overflow-y-auto custom-scrollbar">
       <div className="text-center mb-6 sm:mb-8">
         <motion.h2 
           initial={{ opacity: 0, y: -10 }}
@@ -4904,11 +4935,14 @@ function HandPanView({
         
         {/* Central Ding */}
         <button
-          onClick={() => handleNotePress(HANDPAN_NOTES[0])}
+          type="button"
+          onPointerDown={(event) => handleNotePointerDown(event, HANDPAN_NOTES[0])}
+          onKeyDown={(event) => handleNoteKeyDown(event, HANDPAN_NOTES[0])}
           className={cn(
             "z-20 w-24 h-24 sm:w-44 sm:h-44 rounded-full transition-all duration-300 relative group overflow-hidden outline-none cursor-pointer",
             activeNote === 'ding' ? "bg-app-accent scale-95 shadow-[0_0_50px_rgba(0,255,157,0.4)]" : "bg-zinc-700/50 hover:bg-zinc-600/50 shadow-xl border border-white/5"
           )}
+          style={{ touchAction: 'manipulation' }}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
           <span className={cn(
@@ -4924,7 +4958,9 @@ function HandPanView({
           return (
             <button
               key={note.id}
-              onClick={() => handleNotePress(note)}
+              type="button"
+              onPointerDown={(event) => handleNotePointerDown(event, note)}
+              onKeyDown={(event) => handleNoteKeyDown(event, note)}
               className={cn(
                 "absolute z-10 w-12 h-12 sm:w-24 sm:h-24 rounded-full transition-all duration-200 border border-white/10 flex flex-col items-center justify-center gap-1 overflow-hidden outline-none cursor-pointer",
                 activeNote === note.id ? "bg-app-accent scale-90 shadow-[0_0_30px_rgba(0,255,157,0.3)]" : "bg-zinc-800/80 hover:bg-zinc-700"
@@ -4934,7 +4970,8 @@ function HandPanView({
                 left: '50%',
                 marginTop: isMobile ? '-1.5rem' : '-3rem',
                 marginLeft: isMobile ? '-1.5rem' : '-3rem',
-                transform: `rotate(${angle}deg) translate(${radius}px) rotate(${-angle}deg)`
+                transform: `rotate(${angle}deg) translate(${radius}px) rotate(${-angle}deg)`,
+                touchAction: 'manipulation'
               }}
             >
                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
