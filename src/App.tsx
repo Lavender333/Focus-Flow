@@ -35,7 +35,7 @@ import {
   Star,
   LayoutGrid
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { BrandMark } from './components/BrandMark';
@@ -2563,7 +2563,7 @@ export default function App() {
           )}
 
           {/* Zen Mode Exit Button */}
-          {isZenMode && (
+          {isZenMode && mode !== 'session' && (
             <motion.button 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2610,17 +2610,6 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                  </motion.div>
-                )}
-                {mode === 'session' && activeFreq && isPlaying && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="flex flex-col items-center gap-4 text-center"
-                  >
-                    <span className="text-6xl font-mono font-bold text-app-accent">{activeFreq.hz}Hz</span>
-                    <h2 className="text-2xl font-serif italic text-white/80">{activeFreq.label}</h2>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -2671,11 +2660,14 @@ export default function App() {
                     analyzer={analyzer}
                     activeFreq={activeFreq}
                     isPlaying={isPlaying}
+                    isManualZen={isZenMode}
                     session={activeGeneratedSession}
                     sessionPhase={sessionPhase}
                     remainingSeconds={sessionRemainingSeconds}
                     onStop={stopSession}
                     onPlant={plantCompletedSession}
+                    onExitZen={() => setIsZenMode(false)}
+                    triggerHaptic={triggerHaptic}
                   />
                 </motion.div>
               )}
@@ -2822,28 +2814,37 @@ function SessionView({
   analyzer,
   activeFreq,
   isPlaying,
+  isManualZen,
   session,
   sessionPhase,
   remainingSeconds,
   onStop,
-  onPlant
+  onPlant,
+  onExitZen,
+  triggerHaptic
 }: {
   analyzer: React.RefObject<AnalyserNode | null>;
   activeFreq: Frequency | null;
   isPlaying: boolean;
+  isManualZen: boolean;
   session: Ritual | null;
   sessionPhase: SessionPhase;
   remainingSeconds: number;
   onStop: () => void;
   onPlant: () => void;
+  onExitZen: () => void;
+  triggerHaptic: (p?: number | number[]) => void;
 }) {
   const [lastInteraction, setLastInteraction] = useState(Date.now());
   const [now, setNow] = useState(Date.now());
+  const wasInZen = useRef(false);
+  const shouldReduceMotion = useReducedMotion();
   const totalSeconds = Math.max(1, (session?.minutes ?? 1) * 60);
   const progress = sessionPhase === 'complete' ? 1 : Math.min(1, Math.max(0, 1 - remainingSeconds / totalSeconds));
   const radius = 148;
   const circumference = 2 * Math.PI * radius;
-  const controlsVisible = sessionPhase !== 'running' || now - lastInteraction < 10000;
+  const isSessionZen = sessionPhase === 'running' && (isManualZen || now - lastInteraction >= 10000);
+  const controlsVisible = !isSessionZen;
   const frequencyColor = activeFreq?.color ?? '#4F8F7A';
 
   useEffect(() => {
@@ -2851,7 +2852,17 @@ function SessionView({
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (isSessionZen && !wasInZen.current) {
+      triggerHaptic(10);
+    }
+    wasInZen.current = isSessionZen;
+  }, [isSessionZen, triggerHaptic]);
+
   const showControls = () => {
+    if (isSessionZen) {
+      onExitZen();
+    }
     setLastInteraction(Date.now());
     setNow(Date.now());
   };
@@ -2871,14 +2882,20 @@ function SessionView({
       tabIndex={-1}
     >
       <div
-        className="absolute inset-0 opacity-70"
+        className="absolute inset-0 transition-opacity"
         style={{
-          background: `radial-gradient(circle at 50% 42%, ${frequencyColor}24 0%, transparent 54%), linear-gradient(180deg, #17231f 0%, #101613 100%)`
+          opacity: isSessionZen ? 0.82 : 0.7,
+          transitionDuration: shouldReduceMotion ? '0ms' : '600ms',
+          background: `radial-gradient(circle at 50% 42%, ${frequencyColor}${isSessionZen ? '2e' : '24'} 0%, transparent 54%), linear-gradient(180deg, #17231f 0%, #101613 100%)`
         }}
       />
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="relative w-[min(78vw,540px)] aspect-square">
+        <motion.div
+          animate={{ scale: isSessionZen ? 1.07 : 1 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.6, ease: 'easeOut' }}
+          className="relative w-[min(78vw,540px)] aspect-square"
+        >
           <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 360 360" aria-hidden="true">
             <circle cx="180" cy="180" r={radius} fill="none" stroke="rgba(232,239,235,0.08)" strokeWidth="2" />
             <circle
@@ -2903,13 +2920,16 @@ function SessionView({
             />
             <BreathingGuide isPlaying={isPlaying && sessionPhase !== 'complete'} />
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <motion.div
         animate={{ opacity: controlsVisible ? 1 : 0 }}
-        transition={{ duration: 0.8 }}
-        className="relative z-10 flex h-full min-h-screen flex-col items-center justify-end px-6 pb-12 text-center"
+        transition={{ duration: shouldReduceMotion ? 0 : controlsVisible ? 0.3 : 0.6 }}
+        className={cn(
+          "relative z-10 flex h-full min-h-screen flex-col items-center justify-end px-6 pb-12 text-center",
+          !controlsVisible && "pointer-events-none"
+        )}
       >
         {sessionPhase !== 'complete' && (
           <button
@@ -4344,7 +4364,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Earth Hum',
-      description: `Often called the "Earth's Heartbeat," ${SCHUMANN_RESONANCE_HZ}Hz is the common rounded reference for the fundamental Schumann resonance. In Focus Flow it is used as a low grounding anchor.`,
+      description: `Earth Hum adds a quiet ${SCHUMANN_RESONANCE_HZ}Hz grounding layer underneath the selected tone. Use it when you want the session to feel lower, steadier, and more physically anchored.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
       mode: 'home',
@@ -4352,7 +4372,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Depth Mode',
-      description: 'When active, the app offsets the left and right carriers by 6Hz around the selected tone. Headphones are recommended for binaural perception; the displayed Hz remains the carrier center.',
+      description: 'Depth adds a gentle binaural spread by offsetting the left and right carriers around the selected tone. Use headphones for the clearest effect; the displayed Hz remains the center tone.',
       icon: Brain,
       iconClassName: 'text-blue-400',
       mode: 'home',
@@ -4368,7 +4388,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Sacred Visuals',
-      description: 'The visualizer uses real-time audio analysis to generate sacred geometry patterns. These visuals are designed to be hypnotic and calming, helping to anchor your focus and facilitate a flow state through visual-auditory synchronization.',
+      description: 'Visuals turns on the moving geometry that responds to the sound. Turn it off when you want a quieter screen and only want tone, pulse, and breath.',
       icon: Eye,
       iconClassName: 'text-purple-400',
       mode: 'home',
@@ -4376,7 +4396,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
     },
     {
       title: 'Zen Mode',
-      description: 'Zen Mode removes all interface elements except the core experience. It is designed for deep work or meditation where you want zero distractions. Simply click the icon in the header to enter, and the "minimize" icon to exit.',
+      description: 'Zen is the quiet state. During a running session the controls drift away after ten seconds without touch. Choosing Zen manually skips the wait and goes quiet immediately.',
       icon: Maximize2,
       iconClassName: 'text-white',
       mode: 'home',
@@ -4397,6 +4417,57 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       iconClassName: 'text-app-accent',
       mode: 'chants',
       cta: 'Open Vocal Practice'
+    }
+  ];
+
+  const headerControls = [
+    {
+      label: 'Guide',
+      icon: BookOpen,
+      iconClassName: 'text-app-muted',
+      description: 'Opens this explanation page when you want to understand what a control does.'
+    },
+    {
+      label: 'Begin',
+      icon: Zap,
+      iconClassName: 'text-app-accent',
+      description: 'Starts the current chosen session quickly with its tone, pulse, timer, and visualizer.'
+    },
+    {
+      label: 'Zen',
+      icon: Maximize2,
+      iconClassName: 'text-white',
+      description: 'Moves straight into the quiet session view. If you do nothing, the app enters this state automatically ten seconds after the session is running.'
+    },
+    {
+      label: 'Visuals',
+      icon: Eye,
+      iconClassName: 'text-purple-400',
+      description: 'Shows or hides the moving geometry. Sound and haptics continue either way.'
+    },
+    {
+      label: 'Earth Hum',
+      icon: Activity,
+      iconClassName: 'text-amber-500',
+      description: `Adds the ${SCHUMANN_RESONANCE_HZ}Hz low grounding layer beneath your session tone.`
+    },
+    {
+      label: 'Depth',
+      icon: Brain,
+      iconClassName: 'text-blue-400',
+      description: 'Adds the headphone-friendly binaural spread for a wider, deeper listening field.'
+    },
+    {
+      label: 'Volume',
+      icon: Volume2,
+      iconClassName: 'text-white',
+      description: 'Controls the listening level for the generated tones and sound layers.'
+    },
+    {
+      label: 'Stop All',
+      icon: RotateCcw,
+      iconClassName: 'text-red-400',
+      description: 'Stops anything currently active, including tones, haptics, uploaded audio, drone, or microphone input.'
     }
   ];
 
@@ -4443,6 +4514,26 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             <h4 className="text-xs font-mono uppercase tracking-widest font-bold mb-2">I want focused work</h4>
             <p className="text-xs text-app-muted leading-relaxed">Use the timer if you want the clearest productivity path.</p>
           </button>
+        </div>
+      </section>
+
+      <section className="p-6 rounded-[32px] bg-white/[0.04] border border-white/10 flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-2xl font-serif italic">What the top buttons do</h3>
+          <p className="text-sm text-app-muted leading-relaxed max-w-2xl">
+            These controls change the feeling of a session. You can leave them alone and simply press Begin, or use them when you want the space quieter, deeper, or more grounded.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {headerControls.map(({ label, icon: Icon, iconClassName, description }) => (
+            <div key={label} className="rounded-2xl border border-white/10 bg-black/24 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Icon size={15} className={iconClassName} />
+                <h4 className="text-[10px] font-mono uppercase tracking-widest font-bold">{label}</h4>
+              </div>
+              <p className="text-xs text-app-muted leading-relaxed">{description}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -4517,7 +4608,7 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             </div>
             <h4 className="font-mono text-xs uppercase tracking-widest">Deep Focus (Zen)</h4>
             <p className="text-xs text-app-muted leading-relaxed">
-              Choose **Zen Mode** for deep work or total immersion. It strips away the UI to prevent visual distraction, allowing the auditory and haptic elements to guide you into a flow state without the "clutter" of the interface.
+              Zen is for deep work or total immersion. In a running session, the interface fades away after ten seconds without touch. Any touch brings controls back quickly.
             </p>
           </div>
         </div>
