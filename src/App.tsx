@@ -2934,11 +2934,6 @@ function SessionView({
                   ? 'You finished the session.'
                   : formatTime(remainingSeconds)}
           </p>
-          {sessionPhase !== 'complete' && (
-            <p className="mt-2 text-[11px] font-mono uppercase tracking-[0.24em] text-white/42">
-              Inhale through nose · exhale slowly
-            </p>
-          )}
         </div>
 
         {sessionPhase === 'complete' ? (
