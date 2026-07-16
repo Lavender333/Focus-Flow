@@ -2156,7 +2156,7 @@ export default function App() {
   const enterZenMode = useCallback(() => {
     dismissStartHere();
     setIsZenMode(true);
-    if (mode === 'home') {
+    if (mode !== 'session') {
       launchMoodSession(selectedMoodId);
     } else {
       triggerHaptic([20, 30]);
@@ -2842,7 +2842,7 @@ function SessionView({
   const progress = sessionPhase === 'complete' ? 1 : Math.min(1, Math.max(0, 1 - remainingSeconds / totalSeconds));
   const radius = 148;
   const circumference = 2 * Math.PI * radius;
-  const isSessionZen = sessionPhase === 'running' && (isManualZen || now - lastInteraction >= 10000);
+  const isSessionZen = sessionPhase !== 'complete' && (isManualZen || (sessionPhase === 'running' && now - lastInteraction >= 10000));
   const controlsVisible = !isSessionZen;
   const frequencyColor = activeFreq?.color ?? '#4F8F7A';
 
