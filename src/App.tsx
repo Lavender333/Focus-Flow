@@ -972,37 +972,6 @@ export default function App() {
     triggerHaptic(20);
   };
 
-  const startQuickSession = () => {
-    const starterFrequency = SOLFEGGIO_FREQUENCIES.find(
-      (frequency) => frequency.id === (userProfile.preferredFrequencyId ?? '528')
-    ) ?? SOLFEGGIO_FREQUENCIES[0];
-    const hapticId = userProfile.preferredHapticId ?? hapticIdForFrequency(starterFrequency.id);
-
-    dismissStartHere();
-    setMode('session');
-    setSessionPhase('settling');
-    setCompletedSession(null);
-    setSessionRemainingSeconds(Math.max(30, userProfile.focusMinutes * 60));
-    setActiveGeneratedSession({
-      id: `quick-${Date.now()}`,
-      name: starterFrequency.label,
-      moodId: selectedMoodId,
-      frequencyId: starterFrequency.id,
-      hapticId,
-      minutes: userProfile.focusMinutes,
-      useSchumann: isSchumannActive,
-      healingMode: isHealingMode,
-      createdAt: new Date().toISOString()
-    });
-    playFrequency(starterFrequency);
-    const haptic = HAPTIC_PATTERNS.find((entry) => entry.id === hapticId);
-    if (haptic) playHaptic(haptic);
-    triggerHaptic([30, 20, 30]);
-    window.setTimeout(() => {
-      setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
-    }, 18000);
-  };
-
   useEffect(() => {
     setStoredValue('focusflow_profile', JSON.stringify(userProfile));
   }, [userProfile]);
@@ -2175,6 +2144,15 @@ export default function App() {
     applyRitual(ritual);
   }, [applyRitual]);
 
+  const openHomeNeed = useCallback((moodId: MoodId, options?: { schumann?: boolean; depth?: boolean; visuals?: boolean }) => {
+    setSelectedMoodId(moodId);
+    if (options?.schumann !== undefined) setIsSchumannActive(options.schumann);
+    if (options?.depth !== undefined) setIsHealingMode(options.depth);
+    if (options?.visuals !== undefined) setIsVisualizerActive(options.visuals);
+    setMode('home');
+    triggerHaptic(20);
+  }, [triggerHaptic]);
+
   const enterZenMode = useCallback(() => {
     dismissStartHere();
     setIsZenMode(true);
@@ -2481,22 +2459,20 @@ export default function App() {
                 <BookOpen size={14} />
                 <span className="text-[10px] font-mono uppercase tracking-widest">Guide</span>
               </button>
-              {userProfile.preferredFrequencyId && (
-                <button 
-                  onClick={() => {
-                    startQuickSession();
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
-                    activeFreq?.id === userProfile.preferredFrequencyId && isPlaying
-                      ? "bg-app-accent text-black border-app-accent"
-                      : "bg-app-accent/10 border-app-accent/30 text-app-accent hover:bg-app-accent/20"
-                  )}
-                >
-                  <Zap size={14} />
-                  <span className="text-[10px] font-mono uppercase tracking-widest">Begin</span>
-                </button>
-              )}
+              <button 
+                onClick={() => {
+                  launchMoodSession(selectedMoodId);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all shrink-0",
+                  isPlaying
+                    ? "bg-app-accent text-black border-app-accent"
+                    : "bg-app-accent/10 border-app-accent/30 text-app-accent hover:bg-app-accent/20"
+                )}
+              >
+                <Zap size={14} />
+                <span className="text-[10px] font-mono uppercase tracking-widest">Begin</span>
+              </button>
               <button 
                 onClick={enterZenMode}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
@@ -2659,7 +2635,7 @@ export default function App() {
                     selectedMoodId={selectedMoodId}
                     onSelectMood={setSelectedMoodId}
                     onBegin={launchMoodSession}
-                    onFeelIt={() => launchMoodSession('tense')}
+                    onFeelIt={() => launchMoodSession(selectedMoodId)}
                     lastEntry={gardenEntries[0] ?? null}
                     onAgain={(entry) => {
                       const mood = MOOD_SESSION_PRESETS.find((preset) => preset.id === entry.moodId) ?? MOOD_SESSION_PRESETS[0];
@@ -2792,7 +2768,7 @@ export default function App() {
                           onIndexChange={setTappingPointIndex}
                         />
                       ),
-                      guide: <GuideView onStartQuickSession={startQuickSession} onOpenMode={openModeFromStartHere} />,
+                      guide: <GuideView onStartQuickSession={() => launchMoodSession(selectedMoodId)} onOpenMode={openModeFromStartHere} onOpenNeed={openHomeNeed} />,
                       about: <AboutView />
                     }}
                   />
@@ -4364,13 +4340,21 @@ function SonicChantView({
   );
 }
 
-function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: () => void, onOpenMode: (mode: AppMode | StudioMode | 'profile') => void }) {
+function GuideView({
+  onStartQuickSession,
+  onOpenMode,
+  onOpenNeed
+}: {
+  onStartQuickSession: () => void;
+  onOpenMode: (mode: AppMode | StudioMode | 'profile') => void;
+  onOpenNeed: (moodId: MoodId, options?: { schumann?: boolean; depth?: boolean; visuals?: boolean }) => void;
+}) {
   const guideTopics: Array<{
     title: string;
     description: string;
     icon: typeof Sparkles;
     iconClassName: string;
-    mode: AppMode | StudioMode | 'profile';
+    action: () => void;
     cta: string;
   }> = [
     {
@@ -4378,31 +4362,31 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: `A commonly used modern wellness tone set: 174, 285, 396, 417, 528, 639, 741, 852, and 963Hz. These are intentional listening tones, not ${TUNING_STANDARD} note names or medical treatments.`,
       icon: Sparkles,
       iconClassName: 'text-app-accent',
-      mode: 'home',
-      cta: 'Choose a session'
+      action: () => onOpenNeed('scattered'),
+      cta: 'Choose Focus'
     },
     {
       title: 'Earth Hum',
       description: `Earth Hum adds a quiet ${SCHUMANN_RESONANCE_HZ}Hz grounding layer underneath the selected tone. Use it when you want the session to feel lower, steadier, and more physically anchored.`,
       icon: Activity,
       iconClassName: 'text-amber-500',
-      mode: 'home',
-      cta: 'Choose grounding'
+      action: () => onOpenNeed('anxious', { schumann: true }),
+      cta: 'Choose Grounding'
     },
     {
       title: 'Depth Mode',
       description: 'Depth adds a gentle binaural spread by offsetting the left and right carriers around the selected tone. Use headphones for the clearest effect; the displayed Hz remains the center tone.',
       icon: Brain,
       iconClassName: 'text-blue-400',
-      mode: 'home',
-      cta: 'Choose a session'
+      action: () => onOpenNeed('focused', { depth: true }),
+      cta: 'Choose Depth'
     },
     {
       title: 'EFT Tapping',
       description: 'Emotional Freedom Technique involves tapping on specific meridian points while focusing on a stressor. This physical stimulation sends signals to the amygdala (the brain\'s fear center) to reduce the "fight or flight" response.',
       icon: Fingerprint,
       iconClassName: 'text-emerald-400',
-      mode: 'tapping',
+      action: () => onOpenMode('tapping'),
       cta: 'Open Tapping'
     },
     {
@@ -4410,31 +4394,31 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       description: 'Visuals turns on the moving geometry that responds to the sound. Turn it off when you want a quieter screen and only want tone, pulse, and breath.',
       icon: Eye,
       iconClassName: 'text-purple-400',
-      mode: 'home',
-      cta: 'Choose a session'
+      action: () => onOpenNeed('scattered', { visuals: true }),
+      cta: 'Choose Focus'
     },
     {
       title: 'Zen Mode',
       description: 'Zen is the quiet state. During a running session the controls drift away after ten seconds without touch. Choosing Zen manually skips the wait and goes quiet immediately.',
       icon: Maximize2,
       iconClassName: 'text-white',
-      mode: 'home',
-      cta: 'Choose a session'
+      action: () => onOpenNeed('focused'),
+      cta: 'Choose Depth'
     },
     {
       title: 'Haptic Feedback',
       description: 'On mobile devices, haptics provide physical pulses to guide breathing or grounding. On desktop, low-frequency audio pulses simulate the pattern as a rhythmic practice anchor.',
       icon: Zap,
       iconClassName: 'text-app-accent',
-      mode: 'home',
-      cta: 'Choose a session'
+      action: () => onOpenNeed('tense'),
+      cta: 'Choose Release'
     },
     {
       title: 'Sonic Vocalizations',
       description: 'Using your own voice can support slow breathing, attention, and felt vibration. Sounds like "VOO," humming, bija mantras, and vowel tones are offered as guided resonance practices rather than fixed medical treatments.',
       icon: Mic,
       iconClassName: 'text-app-accent',
-      mode: 'chants',
+      action: () => onOpenMode('chants'),
       cta: 'Open Vocal Practice'
     }
   ];
@@ -4526,12 +4510,12 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
             <p className="text-xs text-app-muted leading-relaxed">Open tapping for a guided body-based reset.</p>
           </button>
           <button
-            onClick={onStartQuickSession}
+            onClick={() => onOpenNeed('scattered')}
             className="text-left p-4 rounded-2xl bg-black/30 border border-white/10 hover:bg-black/40 transition-colors"
           >
             <Timer size={16} className="text-blue-400 mb-3" />
             <h4 className="text-xs font-mono uppercase tracking-widest font-bold mb-2">I want focused work</h4>
-            <p className="text-xs text-app-muted leading-relaxed">Use the timer if you want the clearest productivity path.</p>
+            <p className="text-xs text-app-muted leading-relaxed">Open the Focus session so the next Begin starts the right path.</p>
           </button>
         </div>
       </section>
@@ -4570,10 +4554,10 @@ function GuideView({ onStartQuickSession, onOpenMode }: { onStartQuickSession: (
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {guideTopics.map(({ title, description, icon: Icon, iconClassName, mode, cta }) => (
+        {guideTopics.map(({ title, description, icon: Icon, iconClassName, action, cta }) => (
           <button
             key={title}
-            onClick={() => onOpenMode(mode)}
+            onClick={action}
             className="group text-left p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-app-accent/40 hover:bg-white/[0.07] transition-all flex flex-col gap-4"
           >
             <div className="flex items-center justify-between gap-3">
