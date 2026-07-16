@@ -360,7 +360,7 @@ interface UserProfile {
 }
 
 type AppMode = 'home' | 'session' | 'garden' | 'you' | 'studio';
-type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
+type StudioMode = 'garden' | 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
@@ -415,6 +415,32 @@ interface GardenEntry {
   frequencyId: Frequency['id'];
   completedAt: string;
 }
+
+type GardenElementType = 'stone' | 'sandRipple' | 'waterLine' | 'lantern' | 'bamboo' | 'lotus';
+type GardenBackdrop = 'sand' | 'moss' | 'water' | 'stone';
+type GardenAmbient = 'wind' | 'water' | 'birds' | 'silence';
+
+interface ElementPlacement {
+  roomId: string;
+  x: number;
+  y: number;
+  rotation: number;
+  scale: number;
+}
+
+interface GardenRoom {
+  id: string;
+  name: string;
+  createdAt: string;
+  backdrop: GardenBackdrop;
+  ambientId: GardenAmbient;
+}
+
+const DEFAULT_GARDEN_ROOMS: GardenRoom[] = [
+  { id: 'morning', name: 'Morning', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'sand', ambientId: 'wind' },
+  { id: 'still', name: 'Still water', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'water', ambientId: 'water' },
+  { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'moss', ambientId: 'birds' },
+];
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Focus User',
@@ -879,7 +905,7 @@ export default function App() {
   });
 
   const [mode, setMode] = useState<AppMode>('home');
-  const [studioMode, setStudioMode] = useState<StudioMode>('chants');
+  const [studioMode, setStudioMode] = useState<StudioMode>('garden');
   const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
   const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState(0);
   const [completedSession, setCompletedSession] = useState<Ritual | null>(null);
@@ -910,6 +936,26 @@ export default function App() {
     } catch (error) {
       console.warn('Unable to load progress garden.', error);
       return [];
+    }
+  });
+  const [gardenRooms, setGardenRooms] = useState<GardenRoom[]>(() => {
+    try {
+      const saved = getStoredValue('focusflow_garden_rooms');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed.slice(0, 3) : DEFAULT_GARDEN_ROOMS;
+    } catch (error) {
+      console.warn('Unable to load garden rooms.', error);
+      return DEFAULT_GARDEN_ROOMS;
+    }
+  });
+  const [gardenPlacements, setGardenPlacements] = useState<Record<string, ElementPlacement | null>>(() => {
+    try {
+      const saved = getStoredValue('focusflow_garden_placements');
+      const parsed = saved ? JSON.parse(saved) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      console.warn('Unable to load garden placements.', error);
+      return {};
     }
   });
   const [isMicActive, setIsMicActive] = useState(false);
@@ -963,7 +1009,7 @@ export default function App() {
     dismissStartHere();
     if (nextMode === 'profile') {
       setMode('you');
-    } else if (['chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(nextMode)) {
+    } else if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(nextMode)) {
       setStudioMode(nextMode as StudioMode);
       setMode('studio');
     } else {
@@ -994,6 +1040,14 @@ export default function App() {
   useEffect(() => {
     setStoredValue('focusflow_garden', JSON.stringify(gardenEntries.slice(0, 60)));
   }, [gardenEntries]);
+
+  useEffect(() => {
+    setStoredValue('focusflow_garden_rooms', JSON.stringify(gardenRooms.slice(0, 3)));
+  }, [gardenRooms]);
+
+  useEffect(() => {
+    setStoredValue('focusflow_garden_placements', JSON.stringify(gardenPlacements));
+  }, [gardenPlacements]);
   
   useEffect(() => {
     if ((!isMicActive && !isAudioPlaying && activeReferenceId === null && !isPlaying) || !analyzer.current) {
@@ -1512,7 +1566,7 @@ export default function App() {
       return;
     }
 
-    if (['chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(preset.mode)) {
+    if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(preset.mode)) {
       setStudioMode(preset.mode as StudioMode);
       setMode('studio');
     } else {
@@ -2760,6 +2814,17 @@ export default function App() {
                           }}
                         />
                       ),
+                      garden: (
+                        <RitualGardenStudioView
+                          entries={gardenEntries}
+                          rooms={gardenRooms}
+                          onRoomsChange={setGardenRooms}
+                          placements={gardenPlacements}
+                          onPlacementsChange={setGardenPlacements}
+                          onReplay={(entry) => launchMoodSession(entry.moodId)}
+                          triggerHaptic={triggerHaptic}
+                        />
+                      ),
                       reiki: <ReikiView />,
                       tapping: (
                         <TappingView
@@ -3196,10 +3261,10 @@ function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boole
       <p className="mt-2 text-lg font-serif italic text-white/82">You buy it once and it is yours.</p>
 
       <div className="mt-6 space-y-2 text-sm text-app-muted">
+        <p>Arrange your garden into rooms</p>
         <p>Chants and pitch-guided voice</p>
         <p>Handpan and reiki practices</p>
         <p>Custom rituals you build yourself</p>
-        <p>The full bloom set in your garden</p>
       </div>
 
       <p className="mt-7 text-3xl font-serif italic text-app-gold">$19.99</p>
@@ -3238,6 +3303,7 @@ function StudioView({
   studioContent: Record<StudioMode, React.ReactNode>;
 }) {
   const modes: Array<{ id: StudioMode; label: string }> = [
+    { id: 'garden', label: 'Garden' },
     { id: 'chants', label: 'Chants' },
     { id: 'handpan', label: 'Handpan' },
     { id: 'reiki', label: 'Reiki' },
@@ -3281,6 +3347,296 @@ function StudioView({
         </div>
       )}
     </section>
+  );
+}
+
+const GARDEN_TONE_COLORS: Record<string, [string, string]> = {
+  '174': ['#8C5B54', '#3A2320'],
+  '285': ['#B0764A', '#402A18'],
+  '396': ['#A65A4E', '#38201C'],
+  '417': ['#C68B5A', '#45301C'],
+  '528': ['#C59B54', '#45361A'],
+  '639': ['#4F8F7A', '#1E3A31'],
+  '741': ['#5E8AA6', '#22364A'],
+  '852': ['#6B6FA6', '#262845'],
+  '963': ['#8A6FA0', '#322542'],
+};
+
+function gardenHash(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i += 1) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+function elementTypeForMood(moodId: MoodId): GardenElementType {
+  const map: Record<MoodId, GardenElementType> = {
+    anxious: 'stone',
+    tense: 'sandRipple',
+    blocked: 'waterLine',
+    scattered: 'lantern',
+    tired: 'bamboo',
+    focused: 'lotus',
+  };
+  return map[moodId] ?? 'stone';
+}
+
+function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: number }) {
+  const type = elementTypeForMood(entry.moodId);
+  const seed = gardenHash(entry.id);
+  const [light, deep] = GARDEN_TONE_COLORS[entry.frequencyId] ?? GARDEN_TONE_COLORS['528'];
+  const grown = 0.78 + 0.28 * Math.sqrt(Math.min(entry.minutes, 30) / 30);
+
+  if (type === 'lotus') {
+    return <Bloom entry={entry} size={size} depth={1} />;
+  }
+
+  if (type === 'stone') {
+    const points = Array.from({ length: 7 }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / 7;
+      const jitter = 0.72 + ((seed >> (i * 2)) % 20) / 100;
+      const x = size / 2 + Math.cos(angle) * size * 0.34 * jitter * grown;
+      const y = size / 2 + Math.sin(angle) * size * 0.27 * jitter * grown;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <polygon points={points} fill={deep} opacity="0.92" />
+        <polygon points={points} fill={`url(#stone-${entry.id})`} opacity="0.85" />
+        <defs>
+          <linearGradient id={`stone-${entry.id}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={light} stopOpacity="0.62" />
+            <stop offset="100%" stopColor={deep} stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+      </svg>
+    );
+  }
+
+  if (type === 'sandRipple') {
+    const arcs = 3 + (seed % 3);
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        {Array.from({ length: arcs }, (_, i) => {
+          const r = size * (0.18 + i * 0.1) * grown;
+          return (
+            <path
+              key={i}
+              d={`M ${(size / 2 - r).toFixed(1)} ${(size / 2 + i * 3).toFixed(1)} Q ${size / 2} ${(size / 2 - r * 0.46).toFixed(1)} ${(size / 2 + r).toFixed(1)} ${(size / 2 + i * 3).toFixed(1)}`}
+              fill="none"
+              stroke={light}
+              strokeWidth="2"
+              opacity={0.28 + i * 0.08}
+              strokeLinecap="round"
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
+  if (type === 'waterLine') {
+    const amp = 8 + (seed % 9);
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <path
+          d={`M ${size * 0.08} ${size * 0.58} C ${size * 0.26} ${size * 0.58 - amp}, ${size * 0.36} ${size * 0.58 + amp}, ${size * 0.52} ${size * 0.58} S ${size * 0.78} ${size * 0.58 - amp}, ${size * 0.92} ${size * 0.58}`}
+          fill="none"
+          stroke={light}
+          strokeWidth="3"
+          opacity="0.78"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (type === 'lantern') {
+    return (
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <path d={`M ${size * 0.34} ${size * 0.2} H ${size * 0.66} L ${size * 0.72} ${size * 0.72} H ${size * 0.28} Z`} fill={deep} />
+        <rect x={size * 0.38} y={size * 0.34} width={size * 0.24} height={size * 0.28} rx="6" fill="#F0C36A" opacity="0.9" />
+        <circle cx={size / 2} cy={size * 0.48} r={size * 0.22} fill="#F0C36A" opacity="0.16" />
+        <path d={`M ${size * 0.37} ${size * 0.18} Q ${size / 2} ${size * 0.08} ${size * 0.63} ${size * 0.18}`} fill="none" stroke={light} strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+      {Array.from({ length: 3 + (seed % 4) }, (_, i) => {
+        const x = size * (0.28 + i * 0.12);
+        const h = size * (0.42 + ((seed >> i) % 22) / 100) * grown;
+        return (
+          <g key={i}>
+            <path d={`M ${x} ${size * 0.82} V ${(size * 0.82 - h).toFixed(1)}`} stroke={light} strokeWidth="5" strokeLinecap="round" />
+            {[0.28, 0.48, 0.68].map((t) => (
+              <path key={t} d={`M ${x - 5} ${(size * 0.82 - h * t).toFixed(1)} H ${x + 5}`} stroke={deep} strokeWidth="2" opacity="0.7" />
+            ))}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function RitualGardenStudioView({
+  entries,
+  rooms,
+  onRoomsChange,
+  placements,
+  onPlacementsChange,
+  onReplay,
+  triggerHaptic,
+}: {
+  entries: GardenEntry[];
+  rooms: GardenRoom[];
+  onRoomsChange: (rooms: GardenRoom[]) => void;
+  placements: Record<string, ElementPlacement | null>;
+  onPlacementsChange: React.Dispatch<React.SetStateAction<Record<string, ElementPlacement | null>>>;
+  onReplay: (entry: GardenEntry) => void;
+  triggerHaptic: (p?: number | number[]) => void;
+}) {
+  const [activeRoomId, setActiveRoomId] = useState(rooms[0]?.id ?? DEFAULT_GARDEN_ROOMS[0].id);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const roomRef = useRef<HTMLDivElement | null>(null);
+  const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? DEFAULT_GARDEN_ROOMS[0];
+  const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
+  const trayEntries = entries.filter((entry) => !placements[entry.id]);
+  const backdrops: GardenBackdrop[] = ['sand', 'moss', 'water', 'stone'];
+  const ambients: GardenAmbient[] = ['wind', 'water', 'birds', 'silence'];
+
+  const placeEntry = (entryId: string, clientX: number, clientY: number) => {
+    const rect = roomRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.min(0.94, Math.max(0.06, (clientX - rect.left) / rect.width));
+    const y = Math.min(0.9, Math.max(0.1, (clientY - rect.top) / rect.height));
+    const seed = gardenHash(`${entryId}-${activeRoom.id}`);
+    onPlacementsChange((current) => ({
+      ...current,
+      [entryId]: {
+        roomId: activeRoom.id,
+        x,
+        y,
+        rotation: (seed % 17) - 8,
+        scale: current[entryId]?.scale ?? 1,
+      },
+    }));
+    triggerHaptic(20);
+  };
+
+  const cycleRoomBackdrop = () => {
+    onRoomsChange(rooms.map((room) => room.id === activeRoom.id
+      ? { ...room, backdrop: backdrops[(backdrops.indexOf(room.backdrop) + 1) % backdrops.length] }
+      : room));
+  };
+
+  const cycleRoomAmbient = () => {
+    onRoomsChange(rooms.map((room) => room.id === activeRoom.id
+      ? { ...room, ambientId: ambients[(ambients.indexOf(room.ambientId) + 1) % ambients.length] }
+      : room));
+  };
+
+  return (
+    <div className="min-h-full flex flex-col gap-4 pb-20">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-serif italic">Ritual Garden Studio</h2>
+        <p className="text-xs text-app-muted">Arrange completed sessions into a place. Tap a placed element to begin that session again.</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {rooms.map((room) => (
+          <button
+            key={room.id}
+            onClick={() => setActiveRoomId(room.id)}
+            className={cn("rounded-full border px-4 py-2 text-[10px] font-mono uppercase tracking-widest", activeRoom.id === room.id ? "border-app-gold bg-app-gold text-black" : "border-white/10 text-app-muted")}
+          >
+            {room.name || 'Untitled'}
+          </button>
+        ))}
+        <button onClick={cycleRoomBackdrop} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Ground: {activeRoom.backdrop}</button>
+        <button onClick={cycleRoomAmbient} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Air: {activeRoom.ambientId}</button>
+      </div>
+
+      <div
+        ref={roomRef}
+        onPointerMove={(event) => {
+          if (!dragId) return;
+          placeEntry(dragId, event.clientX, event.clientY);
+        }}
+        onPointerUp={(event) => {
+          if (!dragId) return;
+          placeEntry(dragId, event.clientX, event.clientY);
+          setDragId(null);
+        }}
+        className={cn(
+          "relative min-h-[420px] overflow-hidden rounded-[36px] border border-white/10",
+          activeRoom.backdrop === 'sand' && "bg-[radial-gradient(circle_at_28%_18%,rgba(197,155,84,0.14),transparent_34%),linear-gradient(145deg,#2b251c,#171511)]",
+          activeRoom.backdrop === 'moss' && "bg-[radial-gradient(circle_at_78%_18%,rgba(79,143,122,0.18),transparent_34%),linear-gradient(145deg,#1f2e25,#101612)]",
+          activeRoom.backdrop === 'water' && "bg-[radial-gradient(circle_at_50%_18%,rgba(94,138,166,0.22),transparent_38%),linear-gradient(145deg,#14222b,#0d1418)]",
+          activeRoom.backdrop === 'stone' && "bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(145deg,#252826,#111412)]"
+        )}
+      >
+        <div className="absolute inset-0 opacity-20 ambient-grid" />
+        {roomEntries.map((entry) => {
+          const placement = placements[entry.id];
+          if (!placement) return null;
+          return (
+            <button
+              key={entry.id}
+              onClick={() => onReplay(entry)}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                setDragId(entry.id);
+              }}
+              className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-app-gold"
+              style={{
+                left: `${placement.x * 100}%`,
+                top: `${placement.y * 100}%`,
+                transform: `translate(-50%, -50%) rotate(${placement.rotation}deg) scale(${placement.scale})`,
+              }}
+              title={entry.ritualName}
+            >
+              <GardenElementArt entry={entry} size={104} />
+            </button>
+          );
+        })}
+        {entries.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-center">
+            <p className="max-w-xs text-sm text-app-muted">Completed sessions will appear here as natural elements.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-[28px] border border-white/10 bg-black/24 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Tray</p>
+          <p className="text-[10px] text-app-muted">Drag into the room. Placed elements can be moved again.</p>
+        </div>
+        <div className="flex min-h-[96px] gap-3 overflow-x-auto pb-2">
+          {trayEntries.map((entry) => (
+            <button
+              key={entry.id}
+              onPointerDown={() => setDragId(entry.id)}
+              onClick={() => {
+                const seed = gardenHash(entry.id);
+                placeEntry(entry.id, 160 + (seed % 180), 220 + (seed % 120));
+              }}
+              className="flex min-w-[92px] flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3"
+              title={entry.ritualName}
+            >
+              <GardenElementArt entry={entry} size={64} />
+              <span className="max-w-[74px] truncate text-[10px] text-app-muted">{MOOD_SESSION_PRESETS.find((mood) => mood.id === entry.moodId)?.needWord}</span>
+            </button>
+          ))}
+          {trayEntries.length === 0 && (
+            <p className="flex items-center text-xs text-app-muted">The tray is quiet.</p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
