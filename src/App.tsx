@@ -369,7 +369,9 @@ interface SessionIntentionPreset {
 interface MoodSessionPreset {
   id: MoodId;
   label: string;
+  needWord: string;
   feeling: string;
+  confirmation: string;
   sessionName: string;
   summary: string;
   frequencyId: Frequency['id'];
@@ -474,7 +476,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'anxious',
     label: 'Anxious',
+    needWord: 'Grounding',
     feeling: 'My body is loud and I need a soft landing.',
+    confirmation: 'For when your body is loud and needs somewhere soft to land.',
     sessionName: 'Soft Landing Reset',
     summary: 'Low tone, breath haptics, and a short calm path.',
     frequencyId: '396',
@@ -487,7 +491,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'scattered',
     label: 'Scattered',
+    needWord: 'Focus',
     feeling: 'My attention is everywhere.',
+    confirmation: 'For when your attention is everywhere and wants one clear place to gather.',
     sessionName: 'Gather Focus',
     summary: '528Hz, zen pulse, and a clean focus timer.',
     frequencyId: '528',
@@ -500,7 +506,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'tired',
     label: 'Tired',
+    needWord: 'Lift',
     feeling: 'I need energy without getting wired.',
+    confirmation: 'For when you need to rise without getting wired.',
     sessionName: 'Gentle Lift',
     summary: 'Bright tone, light pulse, and a restorative pace.',
     frequencyId: '741',
@@ -513,7 +521,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'tense',
     label: 'Tense',
+    needWord: 'Release',
     feeling: 'My shoulders and jaw are holding too much.',
+    confirmation: 'For when your shoulders and jaw are ready to let go.',
     sessionName: 'Release Tension',
     summary: 'Slow exhale guide, heartbeat haptic, and grounding tone.',
     frequencyId: '174',
@@ -526,7 +536,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'blocked',
     label: 'Blocked',
+    needWord: 'Clarity',
     feeling: 'I want to move, create, or start again.',
+    confirmation: 'For when you want to cut through and begin again.',
     sessionName: 'Unblock Flow',
     summary: '417Hz, movement-friendly haptics, and an open vowel.',
     frequencyId: '417',
@@ -539,7 +551,9 @@ const MOOD_SESSION_PRESETS: MoodSessionPreset[] = [
   {
     id: 'focused',
     label: 'Ready',
+    needWord: 'Depth',
     feeling: 'I feel ready and want to protect the flow.',
+    confirmation: 'For when you are ready and want to protect the work beneath the noise.',
     sessionName: 'Deep Work Shield',
     summary: '852Hz clarity, minimal haptics, and a longer work block.',
     frequencyId: '852',
@@ -2932,7 +2946,7 @@ function HomeView({
   return (
     <section className="max-w-3xl mx-auto py-8 sm:py-14">
       <div className="text-center mb-8">
-        <h2 className="text-4xl sm:text-6xl font-serif italic leading-none">How are you arriving?</h2>
+        <h2 className="text-4xl sm:text-6xl font-serif italic leading-none">What do you need?</h2>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
@@ -2952,7 +2966,7 @@ function HomeView({
                 background: selected ? `linear-gradient(135deg, ${color}, ${color}66)` : undefined
               }}
             >
-              <span className="text-base font-medium">{mood.label}</span>
+              <span className="text-base font-medium">{mood.needWord}</span>
             </button>
           );
         })}
@@ -2962,7 +2976,7 @@ function HomeView({
         <div className="relative z-10 flex flex-col items-center text-center gap-5">
           <div>
             <h3 className="text-3xl font-serif italic text-white">{selectedMood.sessionName}</h3>
-            <p className="text-sm text-white/62 mt-3">{selectedMood.feeling}</p>
+            <p className="text-sm text-white/62 mt-3 max-w-sm mx-auto leading-relaxed">{selectedMood.confirmation}</p>
             <p className="text-sm text-white/52 mt-2">{selectedMood.minutes} minutes, {haptic?.description.toLowerCase() ?? 'a steady pulse'}</p>
           </div>
           <button
