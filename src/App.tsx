@@ -88,11 +88,21 @@ async function fireNativeImpact(intensity: number) {
   }
 }
 
+// Temporary launch setting: keep Studio open without contacting the purchase service.
+// Set this to false to restore the existing RevenueCat entitlement checks and paywall.
+const STUDIO_ACCESS_FREE = true;
+
 function useStudio() {
-  const [hasStudio, setHasStudio] = useState(() => getStoredValue('focusflow_studio_unlocked') === 'true');
+  const [hasStudio, setHasStudio] = useState(() => STUDIO_ACCESS_FREE || getStoredValue('focusflow_studio_unlocked') === 'true');
   const [purchaseError, setPurchaseError] = useState('');
 
   const refresh = useCallback(async () => {
+    if (STUDIO_ACCESS_FREE) {
+      setHasStudio(true);
+      setPurchaseError('');
+      return;
+    }
+
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
       const apiKey = import.meta.env.VITE_RC_KEY;
@@ -116,6 +126,12 @@ function useStudio() {
   }, [refresh]);
 
   const unlock = useCallback(async () => {
+    if (STUDIO_ACCESS_FREE) {
+      setHasStudio(true);
+      setPurchaseError('');
+      return;
+    }
+
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
       const apiKey = import.meta.env.VITE_RC_KEY;
