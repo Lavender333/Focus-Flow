@@ -2181,11 +2181,10 @@ export default function App() {
       preferredFrequencyId: ritual.frequencyId,
       preferredHapticId: ritual.hapticId,
       useSchumann: ritual.useSchumann,
-      showVisualizer: true
+      showVisualizer: isVisualizerActive
     }));
     setIsHealingMode(ritual.healingMode);
     setIsSchumannActive(ritual.useSchumann);
-    setIsVisualizerActive(true);
     setSelectedChant(chant ?? null);
     setActiveGeneratedSession(ritual);
     playFrequency(frequency, { healingMode: ritual.healingMode, schumannActive: ritual.useSchumann });
@@ -2194,7 +2193,7 @@ export default function App() {
     window.setTimeout(() => {
       setSessionPhase((phase) => phase === 'settling' ? 'running' : phase);
     }, 18000);
-  }, [playFrequency, playHaptic, triggerHaptic]);
+  }, [isVisualizerActive, playFrequency, playHaptic, triggerHaptic]);
 
   const launchMoodSession = useCallback((moodId: MoodId) => {
     const preset = MOOD_SESSION_PRESETS.find((entry) => entry.id === moodId) ?? MOOD_SESSION_PRESETS[0];
@@ -2740,6 +2739,7 @@ export default function App() {
                     analyzer={analyzer}
                     activeFreq={activeFreq}
                     isPlaying={isPlaying}
+                    showVisuals={isVisualizerActive}
                     isManualZen={isZenMode}
                     session={activeGeneratedSession}
                     sessionPhase={sessionPhase}
@@ -2903,6 +2903,7 @@ function SessionView({
   analyzer,
   activeFreq,
   isPlaying,
+  showVisuals,
   isManualZen,
   session,
   sessionPhase,
@@ -2915,6 +2916,7 @@ function SessionView({
   analyzer: React.RefObject<AnalyserNode | null>;
   activeFreq: Frequency | null;
   isPlaying: boolean;
+  showVisuals: boolean;
   isManualZen: boolean;
   session: Ritual | null;
   sessionPhase: SessionPhase;
@@ -3001,12 +3003,14 @@ function SessionView({
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <SacredGeometry
-              analyzer={analyzer}
-              activeColor={frequencyColor}
-              tappingPointIndex={0}
-              isTappingMode={false}
-            />
+            {showVisuals && (
+              <SacredGeometry
+                analyzer={analyzer}
+                activeColor={frequencyColor}
+                tappingPointIndex={0}
+                isTappingMode={false}
+              />
+            )}
             <BreathingGuide isPlaying={isPlaying && sessionPhase !== 'complete'} />
           </div>
         </motion.div>
