@@ -2437,6 +2437,15 @@ export default function App() {
             label="Garden" 
           />
           <NavButton 
+            active={mode === 'studio'} 
+            onClick={() => {
+              setStudioMode('garden');
+              setMode('studio');
+            }} 
+            icon={<LayoutGrid size={24} />} 
+            label="Studio" 
+          />
+          <NavButton 
             active={mode === 'you'} 
             onClick={() => setMode('you')} 
             icon={<User size={24} />} 
