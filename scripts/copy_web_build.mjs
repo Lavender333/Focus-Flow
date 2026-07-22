@@ -21,6 +21,11 @@ if (!fs.existsSync(path.join(dist, 'app.html'))) {
 }
 
 fs.copyFileSync(path.join(dist, 'app.html'), path.join(dist, 'index.html'));
+fs.mkdirSync(path.join(dist, 'server'), { recursive: true });
+fs.writeFileSync(
+  path.join(dist, 'server', 'index.js'),
+  `export default {\n  async fetch(request, env) {\n    const response = await env.ASSETS.fetch(request);\n    if (response.status !== 404) return response;\n    return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));\n  }\n};\n`,
+);
 copyFile('index.html');
 
 fs.rmSync(rootAssets, { recursive: true, force: true });
