@@ -38,4 +38,16 @@ for (const fileName of ['manifest.webmanifest', 'sw.js', 'favicon.ico', 'privacy
 
 copyMatching(/\.(png|svg)$/);
 
+// Sites serves static files from the Cloudflare client output directory.
+const clientDir = path.join(dist, 'client');
+fs.rmSync(clientDir, { recursive: true, force: true });
+fs.mkdirSync(clientDir, { recursive: true });
+for (const entry of fs.readdirSync(dist, { withFileTypes: true })) {
+  if (entry.name === 'client' || entry.name === 'server') continue;
+  const source = path.join(dist, entry.name);
+  const destination = path.join(clientDir, entry.name);
+  if (entry.isDirectory()) fs.cpSync(source, destination, { recursive: true });
+  else fs.copyFileSync(source, destination);
+}
+
 console.log('Copied fresh GitHub Pages build assets.');
