@@ -3494,7 +3494,21 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
 type SandTool = 'rake' | 'stone' | 'smooth';
 type SandRock = { x: number; y: number; r: number; seed: number };
 
-function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number | number[]) => void }) {
+function InteractiveSandGarden({
+  triggerHaptic,
+  activeRoom,
+  entries,
+  placements,
+  onPlacementsChange,
+  onReplay,
+}: {
+  triggerHaptic: (p?: number | number[]) => void;
+  activeRoom: GardenRoom;
+  entries: GardenEntry[];
+  placements: Record<string, ElementPlacement | null>;
+  onPlacementsChange: React.Dispatch<React.SetStateAction<Record<string, ElementPlacement | null>>>;
+  onReplay: (entry: GardenEntry) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const rocksRef = useRef<SandRock[]>([]);
@@ -3503,7 +3517,10 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
   const lastRef = useRef<{ x: number; y: number } | null>(null);
   const [tool, setTool] = useState<SandTool>('rake');
   const [canUndo, setCanUndo] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number; visible: boolean; blocked: boolean }>({ x: 0, y: 0, visible: false, blocked: false });
+  const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
+  const trayEntries = entries.filter((entry) => !placements[entry.id]);
 
   const getContext = () => canvasRef.current?.getContext('2d') ?? null;
 
@@ -3534,7 +3551,13 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
     rocksRef.current = [];
     historyRef.current = [];
     setCanUndo(false);
-  }, []);
+    const saved = getStoredValue(`focusflow_sand_${activeRoom.id}`);
+    if (saved) {
+      const image = new Image();
+      image.onload = () => ctx.drawImage(image, 0, 0, w, h);
+      image.src = saved;
+    }
+  }, [activeRoom.id]);
 
   useEffect(() => {
     drawSand();
@@ -3645,6 +3668,25 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
     triggerHaptic(10);
   };
 
+  const saveSand = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try { setStoredValue(`focusflow_sand_${activeRoom.id}`, canvas.toDataURL('image/jpeg', .78)); } catch { /* device storage is optional */ }
+  };
+
+  const placeEntry = (entryId: string, clientX: number, clientY: number) => {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.min(.93, Math.max(.07, (clientX - rect.left) / rect.width));
+    const y = Math.min(.9, Math.max(.1, (clientY - rect.top) / rect.height));
+    const seed = gardenHash(`${entryId}-${activeRoom.id}`);
+    onPlacementsChange((current) => ({
+      ...current,
+      [entryId]: { roomId: activeRoom.id, x, y, rotation: (seed % 17) - 8, scale: current[entryId]?.scale ?? 1 },
+    }));
+    triggerHaptic(20);
+  };
+
   const toolButton = (id: SandTool, label: string, icon: React.ReactNode) => (
     <button
       type="button"
@@ -3660,9 +3702,9 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
     <section aria-labelledby="play-garden-title" className="sand-garden-shell">
       <div className="sand-garden-heading">
         <div>
-          <p className="sand-eyebrow">A quiet place to play</p>
-          <h2 id="play-garden-title">Your zen garden</h2>
-          <p>No score. No finish line. Just make a little space.</p>
+          <p className="sand-eyebrow">{activeRoom.name} garden</p>
+          <h2 id="play-garden-title">Your practice, growing</h2>
+          <p>Every completed session leaves something meaningful behind.</p>
         </div>
         <span className="sand-free-badge"><Sparkles size={12} /> Free for everyone</span>
       </div>
@@ -3675,15 +3717,17 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
         </div>
         <div className="sand-tool-group sand-actions">
           <button type="button" className="sand-icon-button" disabled={!canUndo} onClick={undo} aria-label="Undo last change" title="Undo"><ArrowLeft size={17} /></button>
-          <button type="button" className="sand-reset" onClick={() => { drawSand(); triggerHaptic(18); }}><RotateCcw size={15} /> New garden</button>
+          <button type="button" className="sand-reset" onClick={() => { setStoredValue(`focusflow_sand_${activeRoom.id}`, ''); drawSand(); triggerHaptic(18); }}><RotateCcw size={15} /> Smooth all</button>
         </div>
       </div>
 
       <div className="sand-wood-frame">
         <div
           ref={wrapRef}
-          className="sand-canvas-wrap"
+          className={cn('sand-canvas-wrap', `ground-${activeRoom.backdrop}`)}
           onPointerLeave={() => setCursor((current) => ({ ...current, visible: false }))}
+          onPointerMove={(event) => { if (dragId) placeEntry(dragId, event.clientX, event.clientY); }}
+          onPointerUp={(event) => { if (dragId) { placeEntry(dragId, event.clientX, event.clientY); setDragId(null); } }}
         >
           <canvas
             ref={canvasRef}
@@ -3709,15 +3753,60 @@ function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number |
               if (tool === 'rake') rakeLine(lastRef.current, point); else smoothAt(point.x, point.y);
               lastRef.current = point;
             }}
-            onPointerUp={() => { drawingRef.current = false; lastRef.current = null; triggerHaptic(8); }}
+            onPointerUp={() => { drawingRef.current = false; lastRef.current = null; saveSand(); triggerHaptic(8); }}
             onPointerCancel={() => { drawingRef.current = false; lastRef.current = null; }}
           />
+          <div className="sand-ground-wash" aria-hidden="true" />
+          {roomEntries.map((entry) => {
+            const placement = placements[entry.id];
+            if (!placement) return null;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => onReplay(entry)}
+                onPointerDown={(event) => { event.stopPropagation(); setDragId(entry.id); }}
+                className="sand-earned-element"
+                style={{ left: `${placement.x * 100}%`, top: `${placement.y * 100}%`, transform: `translate(-50%, -50%) rotate(${placement.rotation}deg) scale(${placement.scale})` }}
+                title={`${entry.ritualName} — tap to repeat this session`}
+              >
+                <GardenElementArt entry={entry} size={96} />
+              </button>
+            );
+          })}
           <div
             aria-hidden="true"
             className={cn('sand-cursor', `is-${tool}`, cursor.blocked && 'is-blocked')}
             style={{ left: cursor.x, top: cursor.y, opacity: cursor.visible ? 1 : 0 }}
           />
           <div className="sand-vignette" aria-hidden="true" />
+        </div>
+      </div>
+      <div className="sand-growth-tray">
+        <div className="sand-tray-heading">
+          <div><span>Your growth tray</span><strong>{trayEntries.length}</strong></div>
+          <p>Complete a session to grow a new element, then place it in your garden.</p>
+        </div>
+        <div className="sand-tray-items">
+          {trayEntries.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onPointerDown={() => setDragId(entry.id)}
+              onClick={() => {
+                const rect = wrapRef.current?.getBoundingClientRect();
+                if (rect) placeEntry(entry.id, rect.left + rect.width * .5, rect.top + rect.height * .55);
+              }}
+              className="sand-tray-item"
+            >
+              <GardenElementArt entry={entry} size={62} />
+              <span>{MOOD_SESSION_PRESETS.find((mood) => mood.id === entry.moodId)?.needWord ?? 'Practice'}</span>
+              <small>{entry.minutes} min</small>
+            </button>
+          ))}
+          {trayEntries.length === 0 && (
+            <div className="sand-empty-tray"><Sparkles size={18} /><span>Your next completed session will grow here.</span></div>
+          )}
         </div>
       </div>
       <p className="sand-instruction">
@@ -3747,32 +3836,9 @@ function RitualGardenStudioView({
   triggerHaptic: (p?: number | number[]) => void;
 }) {
   const [activeRoomId, setActiveRoomId] = useState(rooms[0]?.id ?? DEFAULT_GARDEN_ROOMS[0].id);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const roomRef = useRef<HTMLDivElement | null>(null);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? DEFAULT_GARDEN_ROOMS[0];
-  const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
-  const trayEntries = entries.filter((entry) => !placements[entry.id]);
   const backdrops: GardenBackdrop[] = ['sand', 'moss', 'water', 'stone'];
   const ambients: GardenAmbient[] = ['wind', 'water', 'birds', 'silence'];
-
-  const placeEntry = (entryId: string, clientX: number, clientY: number) => {
-    const rect = roomRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = Math.min(0.94, Math.max(0.06, (clientX - rect.left) / rect.width));
-    const y = Math.min(0.9, Math.max(0.1, (clientY - rect.top) / rect.height));
-    const seed = gardenHash(`${entryId}-${activeRoom.id}`);
-    onPlacementsChange((current) => ({
-      ...current,
-      [entryId]: {
-        roomId: activeRoom.id,
-        x,
-        y,
-        rotation: (seed % 17) - 8,
-        scale: current[entryId]?.scale ?? 1,
-      },
-    }));
-    triggerHaptic(20);
-  };
 
   const cycleRoomBackdrop = () => {
     onRoomsChange(rooms.map((room) => room.id === activeRoom.id
@@ -3788,16 +3854,7 @@ function RitualGardenStudioView({
 
   return (
     <div className="min-h-full flex flex-col gap-4 pb-20">
-      <InteractiveSandGarden triggerHaptic={triggerHaptic} />
-
-      <div className="premium-divider my-2" />
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em] text-app-gold">Your practice</p>
-        <h2 className="text-3xl font-serif italic">Ritual Garden</h2>
-        <p className="text-xs text-app-muted">Arrange completed sessions into a place. Tap a placed element to begin that session again.</p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="garden-room-switcher">
         {rooms.map((room) => (
           <button
             key={room.id}
@@ -3810,83 +3867,14 @@ function RitualGardenStudioView({
         <button onClick={cycleRoomBackdrop} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Ground: {activeRoom.backdrop}</button>
         <button onClick={cycleRoomAmbient} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Air: {activeRoom.ambientId}</button>
       </div>
-
-      <div
-        ref={roomRef}
-        onPointerMove={(event) => {
-          if (!dragId) return;
-          placeEntry(dragId, event.clientX, event.clientY);
-        }}
-        onPointerUp={(event) => {
-          if (!dragId) return;
-          placeEntry(dragId, event.clientX, event.clientY);
-          setDragId(null);
-        }}
-        className={cn(
-          "relative min-h-[420px] overflow-hidden rounded-[36px] border border-white/10",
-          activeRoom.backdrop === 'sand' && "bg-[radial-gradient(circle_at_28%_18%,rgba(197,155,84,0.14),transparent_34%),linear-gradient(145deg,#2b251c,#171511)]",
-          activeRoom.backdrop === 'moss' && "bg-[radial-gradient(circle_at_78%_18%,rgba(79,143,122,0.18),transparent_34%),linear-gradient(145deg,#1f2e25,#101612)]",
-          activeRoom.backdrop === 'water' && "bg-[radial-gradient(circle_at_50%_18%,rgba(94,138,166,0.22),transparent_38%),linear-gradient(145deg,#14222b,#0d1418)]",
-          activeRoom.backdrop === 'stone' && "bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(145deg,#252826,#111412)]"
-        )}
-      >
-        <div className="absolute inset-0 opacity-20 ambient-grid" />
-        {roomEntries.map((entry) => {
-          const placement = placements[entry.id];
-          if (!placement) return null;
-          return (
-            <button
-              key={entry.id}
-              onClick={() => onReplay(entry)}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                setDragId(entry.id);
-              }}
-              className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-app-gold"
-              style={{
-                left: `${placement.x * 100}%`,
-                top: `${placement.y * 100}%`,
-                transform: `translate(-50%, -50%) rotate(${placement.rotation}deg) scale(${placement.scale})`,
-              }}
-              title={entry.ritualName}
-            >
-              <GardenElementArt entry={entry} size={104} />
-            </button>
-          );
-        })}
-        {entries.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-center">
-            <p className="max-w-xs text-sm text-app-muted">Completed sessions will appear here as natural elements.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-[28px] border border-white/10 bg-black/24 p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-app-muted">Tray</p>
-          <p className="text-[10px] text-app-muted">Drag into the room. Placed elements can be moved again.</p>
-        </div>
-        <div className="flex min-h-[96px] gap-3 overflow-x-auto pb-2">
-          {trayEntries.map((entry) => (
-            <button
-              key={entry.id}
-              onPointerDown={() => setDragId(entry.id)}
-              onClick={() => {
-                const seed = gardenHash(entry.id);
-                placeEntry(entry.id, 160 + (seed % 180), 220 + (seed % 120));
-              }}
-              className="flex min-w-[92px] flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3"
-              title={entry.ritualName}
-            >
-              <GardenElementArt entry={entry} size={64} />
-              <span className="max-w-[74px] truncate text-[10px] text-app-muted">{MOOD_SESSION_PRESETS.find((mood) => mood.id === entry.moodId)?.needWord}</span>
-            </button>
-          ))}
-          {trayEntries.length === 0 && (
-            <p className="flex items-center text-xs text-app-muted">The tray is quiet.</p>
-          )}
-        </div>
-      </div>
+      <InteractiveSandGarden
+        triggerHaptic={triggerHaptic}
+        activeRoom={activeRoom}
+        entries={entries}
+        placements={placements}
+        onPlacementsChange={onPlacementsChange}
+        onReplay={onReplay}
+      />
     </div>
   );
 }
