@@ -364,7 +364,7 @@ type StudioMode = 'garden' | 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
-const FREE_STUDIO_MODES: StudioMode[] = ['tapping', 'guide', 'about'];
+const FREE_STUDIO_MODES: StudioMode[] = ['garden', 'tapping', 'guide', 'about'];
 
 interface SessionIntentionPreset {
   id: SessionIntentionId;
@@ -3491,6 +3491,244 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
   );
 }
 
+type SandTool = 'rake' | 'stone' | 'smooth';
+type SandRock = { x: number; y: number; r: number; seed: number };
+
+function InteractiveSandGarden({ triggerHaptic }: { triggerHaptic: (p?: number | number[]) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const rocksRef = useRef<SandRock[]>([]);
+  const historyRef = useRef<Array<{ image: ImageData; rocks: SandRock[] }>>([]);
+  const drawingRef = useRef(false);
+  const lastRef = useRef<{ x: number; y: number } | null>(null);
+  const [tool, setTool] = useState<SandTool>('rake');
+  const [canUndo, setCanUndo] = useState(false);
+  const [cursor, setCursor] = useState<{ x: number; y: number; visible: boolean; blocked: boolean }>({ x: 0, y: 0, visible: false, blocked: false });
+
+  const getContext = () => canvasRef.current?.getContext('2d') ?? null;
+
+  const drawSand = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#e8d8b2';
+    ctx.fillRect(0, 0, w, h);
+
+    const glow = ctx.createRadialGradient(w * .22, h * .08, 0, w * .22, h * .08, Math.max(w, h) * .82);
+    glow.addColorStop(0, 'rgba(255,248,218,.48)');
+    glow.addColorStop(1, 'rgba(168,137,79,.08)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < Math.floor(w * h / 115); i += 1) {
+      const x = (Math.sin(i * 91.7) * .5 + .5) * w;
+      const y = (Math.sin(i * 47.3 + 2) * .5 + .5) * h;
+      ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.09)' : 'rgba(99,72,30,.07)';
+      ctx.fillRect(x, y, 1, 1);
+    }
+    rocksRef.current = [];
+    historyRef.current = [];
+    setCanUndo(false);
+  }, []);
+
+  useEffect(() => {
+    drawSand();
+    const observer = new ResizeObserver(drawSand);
+    if (wrapRef.current) observer.observe(wrapRef.current);
+    return () => observer.disconnect();
+  }, [drawSand]);
+
+  const pos = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+
+  const nearRock = (x: number, y: number, pad = 0) => rocksRef.current.some((rock) => Math.hypot(x - rock.x, y - rock.y) < rock.r + 25 + pad);
+
+  const remember = () => {
+    const canvas = canvasRef.current;
+    const ctx = getContext();
+    if (!canvas || !ctx) return;
+    historyRef.current.push({
+      image: ctx.getImageData(0, 0, canvas.width, canvas.height),
+      rocks: rocksRef.current.map((rock) => ({ ...rock })),
+    });
+    if (historyRef.current.length > 16) historyRef.current.shift();
+    setCanUndo(true);
+  };
+
+  const rakeLine = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const ctx = getContext();
+    if (!ctx) return;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < .5) return;
+    const nx = -dy / distance;
+    const ny = dx / distance;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i += 1) {
+      const offset = (i - 2.5) * 4.3;
+      const x0 = a.x + nx * offset;
+      const y0 = a.y + ny * offset;
+      const x1 = b.x + nx * offset;
+      const y1 = b.y + ny * offset;
+      if (nearRock(x0, y0) || nearRock(x1, y1)) continue;
+      ctx.strokeStyle = 'rgba(91,66,28,.29)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x0 + .8, y0 + .8); ctx.lineTo(x1 + .8, y1 + .8); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,250,226,.58)';
+      ctx.beginPath(); ctx.moveTo(x0 - .8, y0 - .8); ctx.lineTo(x1 - .8, y1 - .8); ctx.stroke();
+    }
+  };
+
+  const smoothAt = (x: number, y: number) => {
+    if (nearRock(x, y, -8)) return;
+    const ctx = getContext();
+    if (!ctx) return;
+    const gradient = ctx.createRadialGradient(x, y, 1, x, y, 34);
+    gradient.addColorStop(0, 'rgba(232,216,178,.96)');
+    gradient.addColorStop(1, 'rgba(232,216,178,0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.fill();
+  };
+
+  const placeRock = (x: number, y: number) => {
+    if (nearRock(x, y, 9)) return false;
+    const ctx = getContext();
+    if (!ctx) return false;
+    const seed = Math.random() * Math.PI * 2;
+    const r = 15 + Math.random() * 8;
+    rocksRef.current.push({ x, y, r, seed });
+    ctx.save();
+    ctx.translate(x, y);
+    for (let ring = 3; ring >= 1; ring -= 1) {
+      ctx.beginPath(); ctx.ellipse(0, 2, r + ring * 9, (r + ring * 9) * .76, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(91,66,28,${.08 + ring * .035})`; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    ctx.shadowColor = 'rgba(44,30,12,.38)'; ctx.shadowBlur = 8; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 5;
+    ctx.beginPath();
+    for (let i = 0; i <= 9; i += 1) {
+      const angle = i / 9 * Math.PI * 2;
+      const rr = r * (.86 + Math.sin(seed + i * 2.4) * .09);
+      const px = Math.cos(angle) * rr;
+      const py = Math.sin(angle) * rr * .82;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    const stone = ctx.createLinearGradient(-r, -r, r, r);
+    stone.addColorStop(0, '#b7b0a0'); stone.addColorStop(.45, '#817c72'); stone.addColorStop(1, '#514e49');
+    ctx.fillStyle = stone; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath(); ctx.ellipse(-r * .28, -r * .3, r * .25, r * .12, -.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,.24)'; ctx.fill();
+    ctx.restore();
+    return true;
+  };
+
+  const undo = () => {
+    const ctx = getContext();
+    const previous = historyRef.current.pop();
+    if (!ctx || !previous) return;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.putImageData(previous.image, 0, 0); ctx.restore();
+    rocksRef.current = previous.rocks;
+    setCanUndo(historyRef.current.length > 0);
+  };
+
+  const chooseTool = (next: SandTool) => {
+    setTool(next);
+    triggerHaptic(10);
+  };
+
+  const toolButton = (id: SandTool, label: string, icon: React.ReactNode) => (
+    <button
+      type="button"
+      onClick={() => chooseTool(id)}
+      aria-pressed={tool === id}
+      className={cn('sand-tool', tool === id && 'is-active')}
+    >
+      {icon}<span>{label}</span>
+    </button>
+  );
+
+  return (
+    <section aria-labelledby="play-garden-title" className="sand-garden-shell">
+      <div className="sand-garden-heading">
+        <div>
+          <p className="sand-eyebrow">A quiet place to play</p>
+          <h2 id="play-garden-title">Your zen garden</h2>
+          <p>No score. No finish line. Just make a little space.</p>
+        </div>
+        <span className="sand-free-badge"><Sparkles size={12} /> Free for everyone</span>
+      </div>
+
+      <div className="sand-toolbar" role="toolbar" aria-label="Garden tools">
+        <div className="sand-tool-group">
+          {toolButton('rake', 'Rake', <Waves size={17} />)}
+          {toolButton('stone', 'Stone', <span className="sand-stone-icon" aria-hidden="true" />)}
+          {toolButton('smooth', 'Smooth', <span className="sand-smooth-icon" aria-hidden="true" />)}
+        </div>
+        <div className="sand-tool-group sand-actions">
+          <button type="button" className="sand-icon-button" disabled={!canUndo} onClick={undo} aria-label="Undo last change" title="Undo"><ArrowLeft size={17} /></button>
+          <button type="button" className="sand-reset" onClick={() => { drawSand(); triggerHaptic(18); }}><RotateCcw size={15} /> New garden</button>
+        </div>
+      </div>
+
+      <div className="sand-wood-frame">
+        <div
+          ref={wrapRef}
+          className="sand-canvas-wrap"
+          onPointerLeave={() => setCursor((current) => ({ ...current, visible: false }))}
+        >
+          <canvas
+            ref={canvasRef}
+            aria-label="Interactive sand garden. Select a tool above, then drag or tap in the sand."
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const point = pos(event);
+              remember();
+              if (tool === 'stone') {
+                if (placeRock(point.x, point.y)) triggerHaptic(22);
+                else historyRef.current.pop();
+                setCanUndo(historyRef.current.length > 0);
+                return;
+              }
+              drawingRef.current = true;
+              lastRef.current = point;
+              if (tool === 'smooth') smoothAt(point.x, point.y);
+            }}
+            onPointerMove={(event) => {
+              const point = pos(event);
+              setCursor({ ...point, visible: event.pointerType === 'mouse', blocked: tool === 'stone' && nearRock(point.x, point.y, 9) });
+              if (!drawingRef.current || !lastRef.current) return;
+              if (tool === 'rake') rakeLine(lastRef.current, point); else smoothAt(point.x, point.y);
+              lastRef.current = point;
+            }}
+            onPointerUp={() => { drawingRef.current = false; lastRef.current = null; triggerHaptic(8); }}
+            onPointerCancel={() => { drawingRef.current = false; lastRef.current = null; }}
+          />
+          <div
+            aria-hidden="true"
+            className={cn('sand-cursor', `is-${tool}`, cursor.blocked && 'is-blocked')}
+            style={{ left: cursor.x, top: cursor.y, opacity: cursor.visible ? 1 : 0 }}
+          />
+          <div className="sand-vignette" aria-hidden="true" />
+        </div>
+      </div>
+      <p className="sand-instruction">
+        {tool === 'rake' && 'Drag slowly through the sand to draw.'}
+        {tool === 'stone' && 'Tap anywhere open to place a stone.'}
+        {tool === 'smooth' && 'Brush over a pattern to soften it away.'}
+      </p>
+    </section>
+  );
+}
+
 function RitualGardenStudioView({
   entries,
   rooms,
@@ -3550,8 +3788,12 @@ function RitualGardenStudioView({
 
   return (
     <div className="min-h-full flex flex-col gap-4 pb-20">
+      <InteractiveSandGarden triggerHaptic={triggerHaptic} />
+
+      <div className="premium-divider my-2" />
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-serif italic">Ritual Garden Studio</h2>
+        <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em] text-app-gold">Your practice</p>
+        <h2 className="text-3xl font-serif italic">Ritual Garden</h2>
         <p className="text-xs text-app-muted">Arrange completed sessions into a place. Tap a placed element to begin that session again.</p>
       </div>
 
