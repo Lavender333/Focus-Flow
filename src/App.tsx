@@ -2744,9 +2744,14 @@ export default function App() {
                   exit={{ opacity: 0, y: -20 }}
                   className="min-h-full"
                 >
-                  <GardenView
+                  <RitualGardenStudioView
                     entries={gardenEntries}
-                    onBegin={() => setMode('home')}
+                    rooms={gardenRooms}
+                    onRoomsChange={setGardenRooms}
+                    placements={gardenPlacements}
+                    onPlacementsChange={setGardenPlacements}
+                    onReplay={(entry) => launchMoodSession(entry.moodId)}
+                    triggerHaptic={triggerHaptic}
                   />
                 </motion.div>
               )}
