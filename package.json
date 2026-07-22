@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/copy_web_build.mjs",
+    "build:sites": "VITE_BASE_PATH=/ vite build && node scripts/copy_web_build.mjs",
     "build:ios": "VITE_BASE_PATH=./ vite build && cp dist/app.html dist/index.html",
     "sync:ios": "npm run build:ios && npx cap sync ios",
     "open:ios": "npm run sync:ios && npx cap open ios",
