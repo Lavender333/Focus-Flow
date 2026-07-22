@@ -3318,9 +3318,7 @@ function StudioView({
 }) {
   const modes: Array<{ id: StudioMode; label: string }> = [
     { id: 'garden', label: 'Garden' },
-    { id: 'chants', label: 'Chants' },
     { id: 'handpan', label: 'Handpan' },
-    { id: 'reiki', label: 'Reiki' },
     { id: 'tapping', label: 'Tapping' },
     { id: 'guide', label: 'Guide' },
     { id: 'about', label: 'About' }
