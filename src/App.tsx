@@ -26,7 +26,6 @@ import {
   Sparkles,
   Activity,
   Eye,
-  Shield,
   Music,
   Wind,
   Mic,
@@ -196,37 +195,6 @@ const SOLFEGGIO_FREQUENCIES: Frequency[] = [
   { id: '963', hz: 963, label: 'Stillness', description: 'Highest tone in the common set for spacious listening', color: '#8A6FA0', secondaryColor: '#322542', chakra: 'Crown (Sahasrara)' },
 ];
 
-const REIKI_SYMBOLS = [
-  { 
-    id: 'cho-ku-rei', 
-    name: 'Cho Ku Rei', 
-    meaning: 'The Power Symbol', 
-    purpose: 'Increasing power, protection, and focus.',
-    description: 'Places the power of the universe here and now. Use to seal energy or protect a space.'
-  },
-  { 
-    id: 'sei-he-ki', 
-    name: 'Sei He Ki', 
-    meaning: 'The Emotional Symbol', 
-    purpose: 'Healing emotions, purifying, and balancing.',
-    description: 'God and man become one. Use for mental and emotional balancing or clearing bad habits.'
-  },
-  { 
-    id: 'hon-sha-ze-sho-nen', 
-    name: 'Hon Sha Ze Sho Nen', 
-    meaning: 'The Distance Symbol', 
-    purpose: 'Healing across time and space.',
-    description: 'No past, no present, no future. Use to send healing energy to people far away or to past/future events.'
-  },
-  { 
-    id: 'dai-ko-myo', 
-    name: 'Dai Ko Myo', 
-    meaning: 'The Master Symbol', 
-    purpose: 'Enlightenment and deep healing.',
-    description: 'Great Shining Light. The primary symbol for Reiki Masters, used for soul healing and empowerment.'
-  }
-];
-
 interface HapticEvent {
   at: number;
   duration: number;
@@ -376,7 +344,7 @@ interface UserProfile {
 }
 
 type AppMode = 'home' | 'session' | 'garden' | 'you' | 'studio';
-type StudioMode = 'garden' | 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
+type StudioMode = 'garden' | 'chants' | 'handpan' | 'tapping' | 'guide' | 'about';
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
@@ -1025,7 +993,7 @@ export default function App() {
     dismissStartHere();
     if (nextMode === 'profile') {
       setMode('you');
-    } else if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(nextMode)) {
+    } else if (['garden', 'chants', 'handpan', 'tapping', 'guide', 'about'].includes(nextMode)) {
       setStudioMode(nextMode as StudioMode);
       setMode('studio');
     } else {
@@ -1582,7 +1550,7 @@ export default function App() {
       return;
     }
 
-    if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(preset.mode)) {
+    if (['garden', 'chants', 'handpan', 'tapping', 'guide', 'about'].includes(preset.mode)) {
       setStudioMode(preset.mode as StudioMode);
       setMode('studio');
     } else {
@@ -2850,7 +2818,6 @@ export default function App() {
                           triggerHaptic={triggerHaptic}
                         />
                       ),
-                      reiki: <ReikiView />,
                       tapping: (
                         <TappingView
                           triggerHaptic={triggerHaptic}
@@ -3292,7 +3259,7 @@ function StudioUnlockCard({ hasStudio, onUnlock, onRestore }: { hasStudio: boole
       <div className="mt-6 space-y-2 text-sm text-app-muted">
         <p>Arrange your garden into rooms</p>
         <p>Chants and pitch-guided voice</p>
-        <p>Handpan and reiki practices</p>
+        <p>Handpan and haptic practices</p>
         <p>Custom rituals you build yourself</p>
       </div>
 
@@ -3335,7 +3302,6 @@ function StudioView({
     { id: 'garden', label: 'Garden' },
     { id: 'chants', label: 'Chants' },
     { id: 'handpan', label: 'Handpan' },
-    { id: 'reiki', label: 'Reiki' },
     { id: 'tapping', label: 'Tapping' },
     { id: 'guide', label: 'Guide' },
     { id: 'about', label: 'About' }
@@ -5543,66 +5509,6 @@ function AboutView() {
           Created with intention for mental harmony and emotional clarity.
         </p>
       </footer>
-    </div>
-  );
-}
-
-function ReikiView() {
-  return (
-    <div className="max-w-3xl mx-auto space-y-12 py-8 px-4">
-      <div className="text-center space-y-4">
-        <h2 className="text-3xl sm:text-4xl font-serif italic text-white">Reiki Master Symbols</h2>
-        <p className="text-xs sm:text-sm text-app-muted max-w-lg mx-auto font-mono uppercase tracking-widest leading-relaxed">
-          Sacred geometric keys for advanced energetic healing and spiritual empowerment.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {REIKI_SYMBOLS.map((symbol) => (
-          <motion.div 
-            key={symbol.id}
-            whileHover={{ y: -5 }}
-            className="glass p-6 sm:p-8 rounded-[32px] border-white/5 flex flex-col gap-4 group transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-app-accent/10 flex items-center justify-center text-app-accent">
-                <Shield size={24} />
-              </div>
-              <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-app-accent/40">{symbol.meaning}</span>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-xl sm:text-2xl font-serif italic text-white group-hover:text-app-accent transition-colors">{symbol.name}</h3>
-              <p className="text-xs font-mono uppercase tracking-widest text-app-accent font-bold opacity-80">{symbol.purpose}</p>
-            </div>
-
-            <p className="text-sm text-app-muted leading-relaxed border-t border-white/5 pt-4">
-              {symbol.description}
-            </p>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="glass p-8 rounded-[32px] border-white/5 bg-gradient-to-br from-app-accent/5 to-transparent">
-        <div className="flex items-center gap-3 mb-6">
-          <BookOpen className="text-app-accent" size={24} />
-          <h3 className="text-lg font-serif italic text-white">Using Symbols with Focus Flow</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-app-muted leading-relaxed">
-          <div className="space-y-2">
-            <span className="text-app-accent font-mono text-[10px] uppercase tracking-widest font-bold">01. Visualize</span>
-            <p>Close your eyes and visualize the symbol while listening to a Solfeggio frequency to amplify the intent.</p>
-          </div>
-          <div className="space-y-2">
-            <span className="text-app-accent font-mono text-[10px] uppercase tracking-widest font-bold">02. Chant</span>
-            <p>Repeat the name of the symbol as a mantra, matching the rhythm of the sonic vocalizations.</p>
-          </div>
-          <div className="space-y-2">
-            <span className="text-app-accent font-mono text-[10px] uppercase tracking-widest font-bold">03. Trace</span>
-            <p>Use the tapping points to physically ground the energy of the symbol into your neurological system.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
