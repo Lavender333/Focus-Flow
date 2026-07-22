@@ -431,10 +431,68 @@ canvas {
 
 .sand-canvas-wrap { position: relative; height: clamp(300px, 52vh, 500px); overflow: hidden; border-radius: 12px; background: #e8d8b2; }
 .sand-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: none; }
-.sand-ground-wash { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .2; transition: background .5s ease; }
-.sand-canvas-wrap.ground-moss .sand-ground-wash { background: radial-gradient(circle at 80% 10%, rgba(53,99,68,.52), transparent 46%), linear-gradient(135deg, rgba(40,84,58,.18), transparent); }
-.sand-canvas-wrap.ground-water .sand-ground-wash { background: radial-gradient(circle at 40% 0%, rgba(66,126,158,.48), transparent 52%), linear-gradient(160deg, transparent, rgba(36,92,124,.24)); }
-.sand-canvas-wrap.ground-stone .sand-ground-wash { background: linear-gradient(135deg, rgba(74,76,72,.26), rgba(30,34,32,.16)); }
+.sand-ground-wash { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .72; transition: background .5s ease, opacity .5s ease; }
+.sand-canvas-wrap.ground-moss .sand-ground-wash {
+  background:
+    radial-gradient(ellipse at -4% 30%, rgba(38,71,42,.86) 0 18%, transparent 38%),
+    radial-gradient(ellipse at 103% 76%, rgba(43,82,48,.9) 0 22%, transparent 42%),
+    radial-gradient(circle at 10% 90%, rgba(93,118,62,.55) 0 8%, transparent 23%),
+    linear-gradient(135deg, rgba(56,91,54,.15), transparent 52%);
+  box-shadow: inset 0 0 70px rgba(25,48,28,.42);
+}
+.sand-canvas-wrap.ground-water .sand-ground-wash {
+  background:
+    linear-gradient(150deg, rgba(210,234,224,.08), transparent 35%),
+    radial-gradient(ellipse at 45% 20%, rgba(45,115,143,.33), transparent 62%),
+    linear-gradient(160deg, rgba(61,133,160,.16), rgba(29,86,112,.38));
+  opacity: .82;
+}
+.sand-canvas-wrap.ground-stone .sand-ground-wash {
+  background:
+    radial-gradient(ellipse at 8% 90%, rgba(91,91,83,.35) 0 13%, transparent 14%),
+    radial-gradient(ellipse at 92% 14%, rgba(73,76,71,.3) 0 12%, transparent 13%),
+    linear-gradient(135deg, rgba(74,76,72,.24), rgba(30,34,32,.14));
+}
+.sand-room-atmosphere { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.sand-room-atmosphere i { position: absolute; display: block; }
+.sand-atmosphere-light { inset: 0; opacity: 0; transition: opacity .5s ease; }
+.room-morning .sand-atmosphere-light {
+  opacity: 1;
+  background:
+    linear-gradient(118deg, rgba(255,246,200,.48), transparent 34%),
+    repeating-linear-gradient(118deg, transparent 0 55px, rgba(100,66,26,.035) 56px 62px, transparent 63px 110px);
+  filter: drop-shadow(18px 22px 18px rgba(103,68,29,.15));
+}
+.sand-atmosphere-ripple { display: none !important; border: 1px solid rgba(223,247,246,.48); border-radius: 50%; opacity: .72; }
+.room-still .sand-atmosphere-ripple,
+.ground-water .sand-atmosphere-ripple { display: block !important; animation: garden-water-ripple 5.5s ease-out infinite; }
+.ripple-one { left: 22%; top: 34%; width: 34px; height: 16px; }
+.ripple-two { right: 20%; bottom: 25%; width: 26px; height: 12px; animation-delay: 2.4s !important; }
+.sand-atmosphere-leaf { display: none !important; width: 13px; height: 7px; border-radius: 90% 10% 80% 20%; background: rgba(48,78,42,.62); box-shadow: inset 4px 0 rgba(147,164,94,.24); }
+.room-moss .sand-atmosphere-leaf,
+.air-birds .sand-atmosphere-leaf { display: block !important; animation: garden-leaf-drift 9s ease-in-out infinite; }
+.leaf-one { left: 14%; top: 18%; transform: rotate(28deg); }
+.leaf-two { right: 12%; top: 33%; transform: rotate(-18deg); animation-delay: 2.8s !important; }
+.leaf-three { right: 26%; bottom: 13%; transform: rotate(65deg); animation-delay: 5.2s !important; }
+.room-moss .sand-atmosphere-light,
+.air-birds .sand-atmosphere-light {
+  opacity: .7;
+  background: repeating-linear-gradient(112deg, transparent 0 48px, rgba(37,62,36,.09) 52px 66px, transparent 70px 122px);
+  animation: garden-canopy 8s ease-in-out infinite alternate;
+}
+@keyframes garden-water-ripple {
+  0% { opacity: 0; transform: scale(.35); }
+  22% { opacity: .65; }
+  100% { opacity: 0; transform: scale(5); }
+}
+@keyframes garden-leaf-drift {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  50% { translate: 18px 11px; rotate: 25deg; }
+}
+@keyframes garden-canopy {
+  from { transform: translateX(-8px) skewX(-2deg); }
+  to { transform: translateX(10px) skewX(2deg); }
+}
 .sand-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 34px rgba(65,39,15,.28), inset 0 3px 8px rgba(65,39,15,.18); }
 .sand-cursor { position: absolute; z-index: 2; width: 25px; height: 25px; margin: -12px 0 0 -12px; border: 1px solid rgba(75,53,22,.55); border-radius: 50%; pointer-events: none; transition: opacity .12s ease, background .12s ease; }
 .sand-cursor.is-stone { width: 42px; height: 42px; margin: -21px 0 0 -21px; border-style: dashed; background: rgba(92,84,69,.14); }

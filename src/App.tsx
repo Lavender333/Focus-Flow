@@ -3727,7 +3727,7 @@ function InteractiveSandGarden({
       <div className="sand-wood-frame">
         <div
           ref={wrapRef}
-          className={cn('sand-canvas-wrap', `ground-${activeRoom.backdrop}`)}
+          className={cn('sand-canvas-wrap', `room-${activeRoom.id}`, `ground-${activeRoom.backdrop}`, `air-${activeRoom.ambientId}`)}
           onPointerLeave={() => setCursor((current) => ({ ...current, visible: false }))}
           onPointerMove={(event) => { if (dragId) placeEntry(dragId, event.clientX, event.clientY); }}
           onPointerUp={(event) => { if (dragId) { placeEntry(dragId, event.clientX, event.clientY); setDragId(null); } }}
@@ -3760,6 +3760,14 @@ function InteractiveSandGarden({
             onPointerCancel={() => { drawingRef.current = false; lastRef.current = null; }}
           />
           <div className="sand-ground-wash" aria-hidden="true" />
+          <div className="sand-room-atmosphere" aria-hidden="true">
+            <i className="sand-atmosphere-light" />
+            <i className="sand-atmosphere-ripple ripple-one" />
+            <i className="sand-atmosphere-ripple ripple-two" />
+            <i className="sand-atmosphere-leaf leaf-one" />
+            <i className="sand-atmosphere-leaf leaf-two" />
+            <i className="sand-atmosphere-leaf leaf-three" />
+          </div>
           {roomEntries.map((entry) => {
             const placement = placements[entry.id];
             if (!placement) return null;
