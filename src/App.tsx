@@ -426,6 +426,13 @@ const DEFAULT_GARDEN_ROOMS: GardenRoom[] = [
   { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'moss', ambientId: 'birds' },
 ];
 
+const STARTER_GARDEN_ELEMENTS: GardenEntry[] = [
+  { id: 'starter-calm-stone', ritualName: 'Calm Stone', moodId: 'anxious', minutes: 5, frequencyId: '396', completedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'starter-focus-lantern', ritualName: 'Focus Lantern', moodId: 'scattered', minutes: 10, frequencyId: '528', completedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'starter-grounding-bamboo', ritualName: 'Grounding Bamboo', moodId: 'tense', minutes: 5, frequencyId: '174', completedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'starter-rest-lotus', ritualName: 'Rest Lotus', moodId: 'tired', minutes: 10, frequencyId: '285', completedAt: '2026-01-01T00:00:00.000Z' },
+];
+
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Focus User',
   focusMinutes: 25,
@@ -3498,8 +3505,9 @@ function RitualGardenStudioView({
   const [dragId, setDragId] = useState<string | null>(null);
   const roomRef = useRef<HTMLDivElement | null>(null);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? DEFAULT_GARDEN_ROOMS[0];
-  const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
-  const trayEntries = entries.filter((entry) => !placements[entry.id]);
+  const gardenElements = [...STARTER_GARDEN_ELEMENTS, ...entries];
+  const roomEntries = gardenElements.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
+  const trayEntries = gardenElements.filter((entry) => !placements[entry.id]);
   const backdrops: GardenBackdrop[] = ['sand', 'moss', 'water', 'stone'];
   const ambients: GardenAmbient[] = ['wind', 'water', 'birds', 'silence'];
 
@@ -3598,9 +3606,9 @@ function RitualGardenStudioView({
             </button>
           );
         })}
-        {entries.length === 0 && (
+        {roomEntries.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-center">
-            <p className="max-w-xs text-sm text-app-muted">Completed sessions will appear here as natural elements.</p>
+            <p className="max-w-xs text-sm text-app-muted">Choose a starter element from the tray or complete a session to grow a new one.</p>
           </div>
         )}
       </div>
@@ -3623,7 +3631,7 @@ function RitualGardenStudioView({
               title={entry.ritualName}
             >
               <GardenElementArt entry={entry} size={64} />
-              <span className="max-w-[74px] truncate text-[10px] text-app-muted">{MOOD_SESSION_PRESETS.find((mood) => mood.id === entry.moodId)?.needWord}</span>
+              <span className="max-w-[74px] truncate text-[10px] text-app-muted">{entry.ritualName}</span>
             </button>
           ))}
           {trayEntries.length === 0 && (
