@@ -588,9 +588,29 @@ canvas {
 .sand-instruction { margin-top: .8rem; color: rgba(232,239,235,.48); font-size: .7rem; text-align: center; }
 
 .garden-room-switcher { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding-inline: .25rem; }
-.sand-earned-element { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center; border-radius: 999px; touch-action: none; cursor: grab; filter: drop-shadow(0 9px 8px rgba(61,42,19,.22)); }
+.sand-earned-element {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  touch-action: none;
+  cursor: grab;
+  filter: drop-shadow(0 8px 7px rgba(6,9,7,.22));
+  transform-origin: 50% 70%;
+  transition: filter .24s ease, opacity .24s ease;
+}
 .sand-earned-element:active { cursor: grabbing; }
 .sand-earned-element:hover { filter: drop-shadow(0 11px 10px rgba(61,42,19,.32)) brightness(1.06); }
+.sand-earned-element.is-opening {
+  animation: garden-earned-arrival 1.8s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes garden-earned-arrival {
+  0% { opacity: 0; filter: drop-shadow(0 0 0 rgba(197,155,84,0)); }
+  42% { opacity: 1; filter: drop-shadow(0 0 18px rgba(197,155,84,.2)); }
+  100% { filter: drop-shadow(0 8px 7px rgba(6,9,7,.22)); }
+}
 
 .sand-growth-tray { margin-top: .85rem; border: 1px solid rgba(232,239,235,.09); border-radius: 22px; padding: .85rem; background: linear-gradient(145deg, rgba(8,14,12,.5), rgba(255,255,255,.025)); }
 .sand-tray-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; }

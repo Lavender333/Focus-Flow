@@ -1038,6 +1038,7 @@ export default function App() {
       return {};
     }
   });
+  const [openingGardenEntryId, setOpeningGardenEntryId] = useState<string | null>(null);
   const [isMicActive, setIsMicActive] = useState(false);
   const [isReferencePlaying, setIsReferencePlaying] = useState(false);
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null);
@@ -2358,6 +2359,10 @@ export default function App() {
     };
 
     setGardenEntries((current) => [entry, ...current].slice(0, 60));
+    setOpeningGardenEntryId(entry.id);
+    window.setTimeout(() => {
+      setOpeningGardenEntryId((current) => current === entry.id ? null : current);
+    }, 2600);
     setActiveGeneratedSession(null);
     setCompletedSession(null);
     setSessionPhase('idle');
@@ -2836,6 +2841,7 @@ export default function App() {
                     onPlacementsChange={setGardenPlacements}
                     onReplay={(entry) => launchMoodSession(entry.moodId)}
                     triggerHaptic={triggerHaptic}
+                    openingEntryId={openingGardenEntryId}
                   />
                 </motion.div>
               )}
@@ -3472,14 +3478,14 @@ function elementTypeForMood(moodId: MoodId): GardenElementType {
   return map[moodId] ?? 'stone';
 }
 
-function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: number }) {
+function GardenElementArt({ entry, size = 96, opening = false, depth = 1 }: { entry: GardenEntry; size?: number; opening?: boolean; depth?: number }) {
   const type = elementTypeForMood(entry.moodId);
   const seed = gardenHash(entry.id);
   const [light, deep] = GARDEN_TONE_COLORS[entry.frequencyId] ?? GARDEN_TONE_COLORS['528'];
   const grown = 0.78 + 0.28 * Math.sqrt(Math.min(entry.minutes, 30) / 30);
 
   if (type === 'lotus') {
-    return <Bloom entry={entry} size={size} depth={1} />;
+    return <Bloom entry={entry} size={size} depth={depth} opening={opening} />;
   }
 
   if (type === 'stone') {
@@ -3492,14 +3498,39 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
     }).join(' ');
     return (
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
-        <polygon points={points} fill={deep} opacity="0.92" />
-        <polygon points={points} fill={`url(#stone-${entry.id})`} opacity="0.85" />
         <defs>
           <linearGradient id={`stone-${entry.id}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={light} stopOpacity="0.62" />
-            <stop offset="100%" stopColor={deep} stopOpacity="0.2" />
+            <stop offset="0%" stopColor={light} stopOpacity="0.68" />
+            <stop offset="48%" stopColor={deep} stopOpacity="0.74" />
+            <stop offset="100%" stopColor="#151916" stopOpacity="0.95" />
           </linearGradient>
+          <radialGradient id={`stone-hi-${entry.id}`} cx="32%" cy="24%" r="58%">
+            <stop offset="0%" stopColor="#F3E8D2" stopOpacity="0.36" />
+            <stop offset="100%" stopColor="#F3E8D2" stopOpacity="0" />
+          </radialGradient>
+          <filter id={`stone-soft-${entry.id}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="2" floodColor="#050806" floodOpacity="0.24" />
+          </filter>
         </defs>
+        <ellipse cx={size / 2} cy={size * 0.68} rx={size * 0.28} ry={size * 0.08} fill="#050806" opacity={0.12 * depth} />
+        <polygon points={points} fill={`url(#stone-${entry.id})`} filter={`url(#stone-soft-${entry.id})`} opacity={0.72 + depth * 0.2} />
+        <polygon points={points} fill={`url(#stone-hi-${entry.id})`} opacity="0.9" />
+        <path
+          d={`M ${size * 0.31} ${size * 0.48} C ${size * 0.42} ${size * 0.39}, ${size * 0.57} ${size * 0.42}, ${size * 0.68} ${size * 0.34}`}
+          fill="none"
+          stroke="#F1E7D0"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          opacity={0.22 * depth}
+        />
+        <path
+          d={`M ${size * 0.28} ${size * 0.59} C ${size * 0.42} ${size * 0.65}, ${size * 0.55} ${size * 0.57}, ${size * 0.74} ${size * 0.63}`}
+          fill="none"
+          stroke="#070B09"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          opacity="0.18"
+        />
       </svg>
     );
   }
@@ -3508,6 +3539,14 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
     const arcs = 3 + (seed % 3);
     return (
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <defs>
+          <linearGradient id={`ripple-${entry.id}`} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={deep} stopOpacity="0" />
+            <stop offset="48%" stopColor={light} stopOpacity="0.68" />
+            <stop offset="100%" stopColor={deep} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <ellipse cx={size / 2} cy={size * 0.62} rx={size * 0.31} ry={size * 0.08} fill={deep} opacity="0.08" />
         {Array.from({ length: arcs }, (_, i) => {
           const r = size * (0.18 + i * 0.1) * grown;
           return (
@@ -3515,9 +3554,9 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
               key={i}
               d={`M ${(size / 2 - r).toFixed(1)} ${(size / 2 + i * 3).toFixed(1)} Q ${size / 2} ${(size / 2 - r * 0.46).toFixed(1)} ${(size / 2 + r).toFixed(1)} ${(size / 2 + i * 3).toFixed(1)}`}
               fill="none"
-              stroke={light}
-              strokeWidth="2"
-              opacity={0.28 + i * 0.08}
+              stroke={`url(#ripple-${entry.id})`}
+              strokeWidth={1.4 + i * 0.22}
+              opacity={(0.34 + i * 0.08) * depth}
               strokeLinecap="round"
             />
           );
@@ -3530,12 +3569,31 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
     const amp = 8 + (seed % 9);
     return (
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <defs>
+          <linearGradient id={`water-${entry.id}`} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={deep} stopOpacity="0" />
+            <stop offset="38%" stopColor={light} stopOpacity="0.72" />
+            <stop offset="64%" stopColor="#E9FFFB" stopOpacity="0.5" />
+            <stop offset="100%" stopColor={deep} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2].map((i) => (
+          <path
+            key={i}
+            d={`M ${size * 0.08} ${size * (0.52 + i * 0.06)} C ${size * 0.26} ${size * (0.52 + i * 0.06) - amp}, ${size * 0.36} ${size * (0.52 + i * 0.06) + amp}, ${size * 0.52} ${size * (0.52 + i * 0.06)} S ${size * 0.78} ${size * (0.52 + i * 0.06) - amp}, ${size * 0.92} ${size * (0.52 + i * 0.06)}`}
+            fill="none"
+            stroke={`url(#water-${entry.id})`}
+            strokeWidth={i === 1 ? 2.6 : 1.3}
+            opacity={(i === 1 ? 0.78 : 0.32) * depth}
+            strokeLinecap="round"
+          />
+        ))}
         <path
           d={`M ${size * 0.08} ${size * 0.58} C ${size * 0.26} ${size * 0.58 - amp}, ${size * 0.36} ${size * 0.58 + amp}, ${size * 0.52} ${size * 0.58} S ${size * 0.78} ${size * 0.58 - amp}, ${size * 0.92} ${size * 0.58}`}
           fill="none"
-          stroke={light}
-          strokeWidth="3"
-          opacity="0.78"
+          stroke="#F1FFFB"
+          strokeWidth="1"
+          opacity={0.34 * depth}
           strokeLinecap="round"
         />
       </svg>
@@ -3545,25 +3603,61 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
   if (type === 'lantern') {
     return (
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
-        <path d={`M ${size * 0.34} ${size * 0.2} H ${size * 0.66} L ${size * 0.72} ${size * 0.72} H ${size * 0.28} Z`} fill={deep} />
-        <rect x={size * 0.38} y={size * 0.34} width={size * 0.24} height={size * 0.28} rx="6" fill="#F0C36A" opacity="0.9" />
-        <circle cx={size / 2} cy={size * 0.48} r={size * 0.22} fill="#F0C36A" opacity="0.16" />
-        <path d={`M ${size * 0.37} ${size * 0.18} Q ${size / 2} ${size * 0.08} ${size * 0.63} ${size * 0.18}`} fill="none" stroke={light} strokeWidth="2" />
+        <defs>
+          <radialGradient id={`lantern-glow-${entry.id}`} cx="50%" cy="48%" r="48%">
+            <stop offset="0%" stopColor="#FFE9A8" stopOpacity={0.7 * depth} />
+            <stop offset="100%" stopColor="#F0C36A" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id={`lantern-body-${entry.id}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={light} stopOpacity="0.82" />
+            <stop offset="100%" stopColor={deep} stopOpacity="0.94" />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size * 0.5} r={size * 0.32} fill={`url(#lantern-glow-${entry.id})`} />
+        <path d={`M ${size * 0.34} ${size * 0.2} H ${size * 0.66} L ${size * 0.72} ${size * 0.72} H ${size * 0.28} Z`} fill={`url(#lantern-body-${entry.id})`} opacity={0.88 * depth} />
+        <rect x={size * 0.39} y={size * 0.34} width={size * 0.22} height={size * 0.29} rx={size * 0.045} fill="#F0C36A" opacity={0.88 * depth} />
+        <path d={`M ${size * 0.37} ${size * 0.18} Q ${size / 2} ${size * 0.08} ${size * 0.63} ${size * 0.18}`} fill="none" stroke="#E7C77A" strokeWidth="2" opacity="0.84" />
+        <path d={`M ${size * 0.31} ${size * 0.74} H ${size * 0.69}`} stroke="#E7C77A" strokeWidth="2" strokeLinecap="round" opacity="0.52" />
       </svg>
     );
   }
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+      <defs>
+        <linearGradient id={`bamboo-${entry.id}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stopColor={light} stopOpacity="0.86" />
+          <stop offset="52%" stopColor="#A3A96B" stopOpacity="0.64" />
+          <stop offset="100%" stopColor={deep} stopOpacity="0.9" />
+        </linearGradient>
+      </defs>
+      <ellipse cx={size / 2} cy={size * 0.84} rx={size * 0.26} ry={size * 0.06} fill="#050806" opacity={0.09 * depth} />
       {Array.from({ length: 3 + (seed % 4) }, (_, i) => {
         const x = size * (0.28 + i * 0.12);
         const h = size * (0.42 + ((seed >> i) % 22) / 100) * grown;
+        const top = size * 0.82 - h;
+        const lean = ((seed >> (i + 3)) % 9) - 4;
         return (
-          <g key={i}>
-            <path d={`M ${x} ${size * 0.82} V ${(size * 0.82 - h).toFixed(1)}`} stroke={light} strokeWidth="5" strokeLinecap="round" />
-            {[0.28, 0.48, 0.68].map((t) => (
-              <path key={t} d={`M ${x - 5} ${(size * 0.82 - h * t).toFixed(1)} H ${x + 5}`} stroke={deep} strokeWidth="2" opacity="0.7" />
+          <g key={i} opacity={0.66 + depth * 0.28}>
+            <path d={`M ${x} ${size * 0.82} C ${x + lean} ${size * 0.62}, ${x - lean} ${size * 0.42}, ${x + lean * 0.6} ${top.toFixed(1)}`} stroke={`url(#bamboo-${entry.id})`} strokeWidth="5" strokeLinecap="round" fill="none" />
+            {[0.24, 0.44, 0.64, 0.82].map((t) => (
+              <path key={t} d={`M ${x - 5} ${(size * 0.82 - h * t).toFixed(1)} H ${x + 5}`} stroke={deep} strokeWidth="1.8" opacity="0.58" strokeLinecap="round" />
             ))}
+            {[0.34, 0.58].map((t, leafIndex) => {
+              const y = size * 0.82 - h * t;
+              const side = leafIndex % 2 === 0 ? -1 : 1;
+              return (
+                <path
+                  key={`leaf-${t}`}
+                  d={`M ${x} ${y.toFixed(1)} C ${x + side * size * 0.11} ${(y - size * 0.05).toFixed(1)}, ${x + side * size * 0.18} ${(y + size * 0.01).toFixed(1)}, ${x + side * size * 0.24} ${(y - size * 0.03).toFixed(1)}`}
+                  fill="none"
+                  stroke={light}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  opacity="0.64"
+                />
+              );
+            })}
           </g>
         );
       })}
@@ -3580,6 +3674,7 @@ function InteractiveSandGarden({
   placements,
   onPlacementsChange,
   onReplay,
+  openingEntryId,
 }: {
   triggerHaptic: (p?: number | number[]) => void;
   activeRoom: GardenRoom;
@@ -3587,6 +3682,7 @@ function InteractiveSandGarden({
   placements: Record<string, ElementPlacement | null>;
   onPlacementsChange: React.Dispatch<React.SetStateAction<Record<string, ElementPlacement | null>>>;
   onReplay: (entry: GardenEntry) => void;
+  openingEntryId: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -3614,19 +3710,103 @@ function InteractiveSandGarden({
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#e8d8b2';
+    const base = ctx.createLinearGradient(0, 0, w, h);
+    if (activeRoom.backdrop === 'water') {
+      base.addColorStop(0, '#6d9b9a');
+      base.addColorStop(0.46, '#315f65');
+      base.addColorStop(1, '#142d34');
+    } else if (activeRoom.backdrop === 'moss') {
+      base.addColorStop(0, '#455f3e');
+      base.addColorStop(0.5, '#243f2b');
+      base.addColorStop(1, '#102119');
+    } else if (activeRoom.backdrop === 'stone') {
+      base.addColorStop(0, '#9b988d');
+      base.addColorStop(0.5, '#5f625b');
+      base.addColorStop(1, '#303630');
+    } else {
+      base.addColorStop(0, '#ead9b3');
+      base.addColorStop(0.5, '#d4bd86');
+      base.addColorStop(1, '#b99755');
+    }
+    ctx.fillStyle = base;
     ctx.fillRect(0, 0, w, h);
 
     const glow = ctx.createRadialGradient(w * .22, h * .08, 0, w * .22, h * .08, Math.max(w, h) * .82);
-    glow.addColorStop(0, 'rgba(255,248,218,.48)');
-    glow.addColorStop(1, 'rgba(168,137,79,.08)');
+    if (activeRoom.backdrop === 'water') {
+      glow.addColorStop(0, 'rgba(226,248,241,.26)');
+      glow.addColorStop(0.58, 'rgba(79,143,122,.1)');
+      glow.addColorStop(1, 'rgba(4,15,18,.18)');
+    } else if (activeRoom.backdrop === 'moss') {
+      glow.addColorStop(0, 'rgba(178,191,121,.18)');
+      glow.addColorStop(0.56, 'rgba(58,92,52,.14)');
+      glow.addColorStop(1, 'rgba(3,9,7,.25)');
+    } else if (activeRoom.backdrop === 'stone') {
+      glow.addColorStop(0, 'rgba(235,232,219,.18)');
+      glow.addColorStop(0.62, 'rgba(127,126,116,.1)');
+      glow.addColorStop(1, 'rgba(8,10,9,.2)');
+    } else {
+      glow.addColorStop(0, 'rgba(255,248,218,.48)');
+      glow.addColorStop(1, 'rgba(168,137,79,.08)');
+    }
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < Math.floor(w * h / 115); i += 1) {
+
+    const grainCount = Math.floor(w * h / (activeRoom.backdrop === 'water' ? 260 : 115));
+    for (let i = 0; i < grainCount; i += 1) {
       const x = (Math.sin(i * 91.7) * .5 + .5) * w;
       const y = (Math.sin(i * 47.3 + 2) * .5 + .5) * h;
-      ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.09)' : 'rgba(99,72,30,.07)';
-      ctx.fillRect(x, y, 1, 1);
+      if (activeRoom.backdrop === 'water') {
+        ctx.fillStyle = i % 2 ? 'rgba(230,250,247,.045)' : 'rgba(8,29,34,.07)';
+        ctx.fillRect(x, y, 1.2, 1);
+      } else if (activeRoom.backdrop === 'moss') {
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(166,184,111,.13)' : 'rgba(12,36,20,.13)';
+        ctx.fillRect(x, y, 1.4, 1.4);
+      } else if (activeRoom.backdrop === 'stone') {
+        ctx.fillStyle = i % 2 ? 'rgba(238,236,226,.08)' : 'rgba(28,31,29,.08)';
+        ctx.fillRect(x, y, 1.6, 1);
+      } else {
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.09)' : 'rgba(99,72,30,.07)';
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+
+    if (activeRoom.backdrop === 'water') {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 18; i += 1) {
+        const y = h * (0.12 + i * 0.045);
+        const amp = 5 + (i % 4);
+        ctx.strokeStyle = i % 3 === 0 ? 'rgba(228,248,244,.16)' : 'rgba(34,91,101,.18)';
+        ctx.lineWidth = i % 3 === 0 ? 1.2 : 0.8;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.05, y);
+        for (let x = w * 0.05; x <= w * 0.95; x += 48) {
+          ctx.quadraticCurveTo(x + 24, y + Math.sin(i + x * 0.02) * amp, x + 48, y);
+        }
+        ctx.stroke();
+      }
+    } else if (activeRoom.backdrop === 'moss') {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 34; i += 1) {
+        const x = (Math.sin(i * 33.9) * .5 + .5) * w;
+        const y = (Math.sin(i * 58.1 + 4) * .5 + .5) * h;
+        ctx.strokeStyle = i % 2 ? 'rgba(147,164,94,.16)' : 'rgba(15,48,25,.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - 7, y + 4);
+        ctx.quadraticCurveTo(x, y - 8, x + 9, y + 3);
+        ctx.stroke();
+      }
+    } else if (activeRoom.backdrop === 'stone') {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 9; i += 1) {
+        const y = h * (0.12 + i * 0.1);
+        ctx.strokeStyle = i % 2 ? 'rgba(231,226,211,.1)' : 'rgba(27,30,28,.11)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.08, y);
+        ctx.bezierCurveTo(w * 0.28, y - 16, w * 0.55, y + 20, w * 0.92, y - 8);
+        ctx.stroke();
+      }
     }
     rocksRef.current = [];
     historyRef.current = [];
@@ -3637,7 +3817,7 @@ function InteractiveSandGarden({
       image.onload = () => ctx.drawImage(image, 0, 0, w, h);
       image.src = saved;
     }
-  }, [activeRoom.id]);
+  }, [activeRoom.backdrop, activeRoom.id]);
 
   useEffect(() => {
     drawSand();
@@ -3895,17 +4075,29 @@ function InteractiveSandGarden({
           {roomEntries.map((entry) => {
             const placement = placements[entry.id];
             if (!placement) return null;
+            const ageIndex = entries.findIndex((item) => item.id === entry.id);
+            const ageDepth = 1 - Math.min(Math.max(ageIndex, 0), 59) / 60;
+            const spatialDepth = 0.68 + placement.y * 0.32;
+            const depth = Math.max(0.45, Math.min(1, (ageDepth * 0.64) + (spatialDepth * 0.36)));
+            const renderSize = Math.round(76 + depth * 30);
+            const plantedScale = placement.scale * (0.86 + depth * 0.18);
             return (
               <button
                 key={entry.id}
                 type="button"
                 onClick={() => onReplay(entry)}
                 onPointerDown={(event) => { event.stopPropagation(); setDragId(entry.id); }}
-                className="sand-earned-element"
-                style={{ left: `${placement.x * 100}%`, top: `${placement.y * 100}%`, transform: `translate(-50%, -50%) rotate(${placement.rotation}deg) scale(${placement.scale})` }}
+                className={cn('sand-earned-element', openingEntryId === entry.id && 'is-opening')}
+                style={{
+                  left: `${placement.x * 100}%`,
+                  top: `${placement.y * 100}%`,
+                  opacity: 0.68 + depth * 0.32,
+                  zIndex: Math.round(8 + placement.y * 60),
+                  transform: `translate(-50%, -50%) rotate(${placement.rotation}deg) scale(${plantedScale})`,
+                }}
                 title={`${entry.ritualName} — tap to repeat this session`}
               >
-                <GardenElementArt entry={entry} size={96} />
+                <GardenElementArt entry={entry} size={renderSize} depth={depth} opening={openingEntryId === entry.id} />
               </button>
             );
           })}
@@ -3959,6 +4151,7 @@ function RitualGardenStudioView({
   onPlacementsChange,
   onReplay,
   triggerHaptic,
+  openingEntryId,
 }: {
   entries: GardenEntry[];
   rooms: GardenRoom[];
@@ -3967,6 +4160,7 @@ function RitualGardenStudioView({
   onPlacementsChange: React.Dispatch<React.SetStateAction<Record<string, ElementPlacement | null>>>;
   onReplay: (entry: GardenEntry) => void;
   triggerHaptic: (p?: number | number[]) => void;
+  openingEntryId: string | null;
 }) {
   const [activeRoomId, setActiveRoomId] = useState(rooms[0]?.id ?? DEFAULT_GARDEN_ROOMS[0].id);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? DEFAULT_GARDEN_ROOMS[0];
@@ -4005,6 +4199,7 @@ function RitualGardenStudioView({
         placements={placements}
         onPlacementsChange={onPlacementsChange}
         onReplay={onReplay}
+        openingEntryId={openingEntryId}
       />
     </div>
   );
