@@ -421,6 +421,11 @@ type GardenElementType = 'stone' | 'sandRipple' | 'waterLine' | 'lantern' | 'bam
 type GardenBackdrop = 'sand' | 'moss' | 'water' | 'stone';
 type GardenAmbient = 'wind' | 'water' | 'birds' | 'silence';
 type SandTool = 'rake' | 'stone' | 'smooth';
+type GardenToolCopy = {
+  labels: Record<SandTool, string>;
+  resetLabel: string;
+  instructions: Record<SandTool, string>;
+};
 
 interface ElementPlacement {
   roomId: string;
@@ -461,16 +466,43 @@ const GARDEN_AMBIENT_LABELS: Record<GardenAmbient, string> = {
   silence: 'Silence',
 };
 
-const GARDEN_ROOM_TOOL_LABELS: Record<string, Record<SandTool, string>> = {
-  morning: { rake: 'Trace', stone: 'Set stone', smooth: 'Clear sand' },
-  still: { rake: 'Ripple', stone: 'Anchor', smooth: 'Settle' },
-  moss: { rake: 'Comb moss', stone: 'Place stone', smooth: 'Soften' },
-};
-
-const GARDEN_TOOL_LABELS: Record<SandTool, string> = {
-  rake: 'Trace',
-  stone: 'Set stone',
-  smooth: 'Soften',
+const GARDEN_TOOL_COPY: Record<GardenBackdrop, GardenToolCopy> = {
+  sand: {
+    labels: { rake: 'Trace', stone: 'Set stone', smooth: 'Clear sand' },
+    resetLabel: 'Clear all',
+    instructions: {
+      rake: 'Drag slowly through the sand to trace a pattern.',
+      stone: 'Tap anywhere open to set a stone.',
+      smooth: 'Brush over a line to clear the sand.',
+    },
+  },
+  water: {
+    labels: { rake: 'Ripple', stone: 'Anchor', smooth: 'Settle' },
+    resetLabel: 'Still all',
+    instructions: {
+      rake: 'Drag across the water to send a quiet ripple.',
+      stone: 'Tap open water to place an anchor stone.',
+      smooth: 'Brush through ripples to settle the surface.',
+    },
+  },
+  moss: {
+    labels: { rake: 'Comb moss', stone: 'Place stone', smooth: 'Soften' },
+    resetLabel: 'Soften all',
+    instructions: {
+      rake: 'Drag gently to comb the moss.',
+      stone: 'Tap a clearing to place a stone.',
+      smooth: 'Brush over the moss to soften the texture.',
+    },
+  },
+  stone: {
+    labels: { rake: 'Etch', stone: 'Place stone', smooth: 'Polish' },
+    resetLabel: 'Polish all',
+    instructions: {
+      rake: 'Drag slowly to etch a quiet line.',
+      stone: 'Tap an open place to arrange a stone.',
+      smooth: 'Brush over marks to polish the surface.',
+    },
+  },
 };
 
 function normalizeGardenRooms(value: unknown): GardenRoom[] {
@@ -3568,7 +3600,7 @@ function InteractiveSandGarden({
   const [cursor, setCursor] = useState<{ x: number; y: number; visible: boolean; blocked: boolean }>({ x: 0, y: 0, visible: false, blocked: false });
   const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
   const trayEntries = entries.filter((entry) => !placements[entry.id]);
-  const toolLabels = GARDEN_ROOM_TOOL_LABELS[activeRoom.id] ?? GARDEN_TOOL_LABELS;
+  const toolCopy = GARDEN_TOOL_COPY[activeRoom.backdrop];
 
   const getContext = () => canvasRef.current?.getContext('2d') ?? null;
 
@@ -3633,7 +3665,7 @@ function InteractiveSandGarden({
     setCanUndo(true);
   };
 
-  const rakeLine = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  const drawPrimaryLine = (a: { x: number; y: number }, b: { x: number; y: number }) => {
     const ctx = getContext();
     if (!ctx) return;
     const dx = b.x - a.x;
@@ -3643,17 +3675,48 @@ function InteractiveSandGarden({
     const nx = -dy / distance;
     const ny = dx / distance;
     ctx.lineCap = 'round';
+    if (activeRoom.backdrop === 'water') {
+      for (let i = 0; i < 3; i += 1) {
+        const offset = (i - 1) * 7;
+        const wave = Math.sin((a.x + b.x + i * 41) * 0.015) * 5;
+        const x0 = a.x + nx * offset;
+        const y0 = a.y + ny * offset;
+        const x1 = b.x + nx * offset;
+        const y1 = b.y + ny * offset;
+        if (nearRock(x0, y0) || nearRock(x1, y1)) continue;
+        ctx.strokeStyle = i === 1 ? 'rgba(227,247,244,.48)' : 'rgba(86,146,158,.28)';
+        ctx.lineWidth = i === 1 ? 1.8 : 1.1;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.quadraticCurveTo((x0 + x1) / 2 + nx * wave, (y0 + y1) / 2 + ny * wave, x1, y1);
+        ctx.stroke();
+      }
+      return;
+    }
+
+    const dark = activeRoom.backdrop === 'moss'
+      ? 'rgba(24,54,31,.34)'
+      : activeRoom.backdrop === 'stone'
+        ? 'rgba(48,52,49,.32)'
+        : 'rgba(91,66,28,.29)';
+    const light = activeRoom.backdrop === 'moss'
+      ? 'rgba(164,184,112,.32)'
+      : activeRoom.backdrop === 'stone'
+        ? 'rgba(224,226,218,.24)'
+        : 'rgba(255,250,226,.58)';
+    const count = activeRoom.backdrop === 'stone' ? 3 : 6;
     for (let i = 0; i < 6; i += 1) {
-      const offset = (i - 2.5) * 4.3;
+      if (i >= count) continue;
+      const offset = (i - (count - 1) / 2) * (activeRoom.backdrop === 'stone' ? 6.5 : 4.3);
       const x0 = a.x + nx * offset;
       const y0 = a.y + ny * offset;
       const x1 = b.x + nx * offset;
       const y1 = b.y + ny * offset;
       if (nearRock(x0, y0) || nearRock(x1, y1)) continue;
-      ctx.strokeStyle = 'rgba(91,66,28,.29)';
+      ctx.strokeStyle = dark;
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(x0 + .8, y0 + .8); ctx.lineTo(x1 + .8, y1 + .8); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,250,226,.58)';
+      ctx.strokeStyle = light;
       ctx.beginPath(); ctx.moveTo(x0 - .8, y0 - .8); ctx.lineTo(x1 - .8, y1 - .8); ctx.stroke();
     }
   };
@@ -3663,8 +3726,22 @@ function InteractiveSandGarden({
     const ctx = getContext();
     if (!ctx) return;
     const gradient = ctx.createRadialGradient(x, y, 1, x, y, 34);
-    gradient.addColorStop(0, 'rgba(232,216,178,.96)');
-    gradient.addColorStop(1, 'rgba(232,216,178,0)');
+    const fill = activeRoom.backdrop === 'water'
+      ? 'rgba(172,210,208,.5)'
+      : activeRoom.backdrop === 'moss'
+        ? 'rgba(69,99,58,.58)'
+        : activeRoom.backdrop === 'stone'
+          ? 'rgba(120,124,116,.4)'
+          : 'rgba(232,216,178,.96)';
+    const fade = activeRoom.backdrop === 'water'
+      ? 'rgba(172,210,208,0)'
+      : activeRoom.backdrop === 'moss'
+        ? 'rgba(69,99,58,0)'
+        : activeRoom.backdrop === 'stone'
+          ? 'rgba(120,124,116,0)'
+          : 'rgba(232,216,178,0)';
+    gradient.addColorStop(0, fill);
+    gradient.addColorStop(1, fade);
     ctx.fillStyle = gradient;
     ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.fill();
   };
@@ -3759,13 +3836,13 @@ function InteractiveSandGarden({
 
       <div className="sand-toolbar" role="toolbar" aria-label="Garden tools">
         <div className="sand-tool-group">
-          {toolButton('rake', toolLabels.rake, <Waves size={17} />)}
-          {toolButton('stone', toolLabels.stone, <span className="sand-stone-icon" aria-hidden="true" />)}
-          {toolButton('smooth', toolLabels.smooth, <span className="sand-smooth-icon" aria-hidden="true" />)}
+          {toolButton('rake', toolCopy.labels.rake, <Waves size={17} />)}
+          {toolButton('stone', toolCopy.labels.stone, <span className="sand-stone-icon" aria-hidden="true" />)}
+          {toolButton('smooth', toolCopy.labels.smooth, <span className="sand-smooth-icon" aria-hidden="true" />)}
         </div>
         <div className="sand-tool-group sand-actions">
           <button type="button" className="sand-icon-button" disabled={!canUndo} onClick={undo} aria-label="Undo last change" title="Undo"><ArrowLeft size={17} /></button>
-          <button type="button" className="sand-reset" onClick={() => { setStoredValue(`focusflow_sand_${activeRoom.id}`, ''); drawSand(); triggerHaptic(18); }}><RotateCcw size={15} /> Smooth all</button>
+          <button type="button" className="sand-reset" onClick={() => { setStoredValue(`focusflow_sand_${activeRoom.id}`, ''); drawSand(); triggerHaptic(18); }}><RotateCcw size={15} /> {toolCopy.resetLabel}</button>
         </div>
       </div>
 
@@ -3798,7 +3875,7 @@ function InteractiveSandGarden({
               const point = pos(event);
               setCursor({ ...point, visible: event.pointerType === 'mouse', blocked: tool === 'stone' && nearRock(point.x, point.y, 9) });
               if (!drawingRef.current || !lastRef.current) return;
-              if (tool === 'rake') rakeLine(lastRef.current, point); else smoothAt(point.x, point.y);
+              if (tool === 'rake') drawPrimaryLine(lastRef.current, point); else smoothAt(point.x, point.y);
               lastRef.current = point;
             }}
             onPointerUp={() => { drawingRef.current = false; lastRef.current = null; saveSand(); triggerHaptic(8); }}
@@ -3868,9 +3945,7 @@ function InteractiveSandGarden({
         </div>
       </div>
       <p className="sand-instruction">
-        {tool === 'rake' && 'Drag slowly through the sand to draw.'}
-        {tool === 'stone' && 'Tap anywhere open to place a stone.'}
-        {tool === 'smooth' && 'Brush over a pattern to soften it away.'}
+        {toolCopy.instructions[tool]}
       </p>
     </section>
   );
