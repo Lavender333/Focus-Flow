@@ -2705,7 +2705,7 @@ export default function App() {
                       launchMoodSession(mood.id);
                     }}
                     onPractice={() => {
-                      setStudioMode('guide');
+                      setStudioMode('chants');
                       setMode('studio');
                     }}
                   />
