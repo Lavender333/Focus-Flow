@@ -3764,6 +3764,8 @@ function InteractiveSandGarden({
             <i className="sand-atmosphere-light" />
             <i className="sand-atmosphere-ripple ripple-one" />
             <i className="sand-atmosphere-ripple ripple-two" />
+            <i className="sand-atmosphere-ripple ripple-three" />
+            <i className="sand-atmosphere-ripple ripple-four" />
             <i className="sand-atmosphere-leaf leaf-one" />
             <i className="sand-atmosphere-leaf leaf-two" />
             <i className="sand-atmosphere-leaf leaf-three" />

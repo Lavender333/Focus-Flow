@@ -442,10 +442,12 @@ canvas {
 }
 .sand-canvas-wrap.ground-water .sand-ground-wash {
   background:
+    repeating-linear-gradient(172deg, transparent 0 34px, rgba(223,247,246,.055) 36px 38px, transparent 42px 78px),
     linear-gradient(150deg, rgba(210,234,224,.08), transparent 35%),
     radial-gradient(ellipse at 45% 20%, rgba(45,115,143,.33), transparent 62%),
     linear-gradient(160deg, rgba(61,133,160,.16), rgba(29,86,112,.38));
   opacity: .82;
+  animation: garden-water-shimmer 10s ease-in-out infinite alternate;
 }
 .sand-canvas-wrap.ground-stone .sand-ground-wash {
   background:
@@ -463,11 +465,13 @@ canvas {
     repeating-linear-gradient(118deg, transparent 0 55px, rgba(100,66,26,.035) 56px 62px, transparent 63px 110px);
   filter: drop-shadow(18px 22px 18px rgba(103,68,29,.15));
 }
-.sand-atmosphere-ripple { display: none !important; border: 1px solid rgba(223,247,246,.48); border-radius: 50%; opacity: .72; }
+.sand-atmosphere-ripple { display: none !important; border: 1px solid rgba(223,247,246,.58); border-radius: 50%; opacity: .72; }
 .room-still .sand-atmosphere-ripple,
-.ground-water .sand-atmosphere-ripple { display: block !important; animation: garden-water-ripple 5.5s ease-out infinite; }
-.ripple-one { left: 22%; top: 34%; width: 34px; height: 16px; }
-.ripple-two { right: 20%; bottom: 25%; width: 26px; height: 12px; animation-delay: 2.4s !important; }
+.ground-water .sand-atmosphere-ripple { display: block !important; animation: garden-water-ripple 6.8s ease-out infinite; }
+.ripple-one { left: 17%; top: 30%; width: 54px; height: 24px; }
+.ripple-two { right: 18%; bottom: 23%; width: 42px; height: 18px; animation-delay: 2.2s !important; }
+.ripple-three { left: 48%; top: 54%; width: 64px; height: 28px; animation-delay: 3.7s !important; }
+.ripple-four { right: 35%; top: 18%; width: 34px; height: 15px; animation-delay: 5.1s !important; }
 .sand-atmosphere-leaf { display: none !important; width: 13px; height: 7px; border-radius: 90% 10% 80% 20%; background: rgba(48,78,42,.62); box-shadow: inset 4px 0 rgba(147,164,94,.24); }
 .room-moss .sand-atmosphere-leaf,
 .air-birds .sand-atmosphere-leaf { display: block !important; animation: garden-leaf-drift 9s ease-in-out infinite; }
@@ -482,8 +486,12 @@ canvas {
 }
 @keyframes garden-water-ripple {
   0% { opacity: 0; transform: scale(.35); }
-  22% { opacity: .65; }
-  100% { opacity: 0; transform: scale(5); }
+  18% { opacity: .72; }
+  100% { opacity: 0; transform: scale(6.2); }
+}
+@keyframes garden-water-shimmer {
+  from { transform: translate3d(-10px, 0, 0); filter: saturate(1); }
+  to { transform: translate3d(10px, 4px, 0); filter: saturate(1.08); }
 }
 @keyframes garden-leaf-drift {
   0%, 100% { translate: 0 0; rotate: 0deg; }
