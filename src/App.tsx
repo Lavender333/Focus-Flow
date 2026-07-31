@@ -360,11 +360,12 @@ interface UserProfile {
 }
 
 type AppMode = 'home' | 'session' | 'garden' | 'you' | 'studio';
-type StudioMode = 'garden' | 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
+type StudioMode = 'chants' | 'handpan' | 'reiki' | 'tapping' | 'guide' | 'about';
 type SessionPhase = 'idle' | 'settling' | 'running' | 'closing' | 'complete';
 type SessionIntentionId = 'calm' | 'focus' | 'ground' | 'heal' | 'sleep';
 type MoodId = 'anxious' | 'scattered' | 'tired' | 'tense' | 'blocked' | 'focused';
-const FREE_STUDIO_MODES: StudioMode[] = ['garden', 'tapping', 'guide', 'about'];
+const STUDIO_MODES: StudioMode[] = ['chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'];
+const FREE_STUDIO_MODES: StudioMode[] = ['tapping', 'guide', 'about'];
 
 interface SessionIntentionPreset {
   id: SessionIntentionId;
@@ -952,7 +953,7 @@ export default function App() {
   });
 
   const [mode, setMode] = useState<AppMode>('home');
-  const [studioMode, setStudioMode] = useState<StudioMode>('garden');
+  const [studioMode, setStudioMode] = useState<StudioMode>('chants');
   const [sessionPhase, setSessionPhase] = useState<SessionPhase>('idle');
   const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState(0);
   const [completedSession, setCompletedSession] = useState<Ritual | null>(null);
@@ -1056,7 +1057,9 @@ export default function App() {
     dismissStartHere();
     if (nextMode === 'profile') {
       setMode('you');
-    } else if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(nextMode)) {
+    } else if (nextMode === 'garden') {
+      setMode('garden');
+    } else if (STUDIO_MODES.includes(nextMode as StudioMode)) {
       setStudioMode(nextMode as StudioMode);
       setMode('studio');
     } else {
@@ -1613,7 +1616,9 @@ export default function App() {
       return;
     }
 
-    if (['garden', 'chants', 'handpan', 'reiki', 'tapping', 'guide', 'about'].includes(preset.mode)) {
+    if (preset.mode === 'garden') {
+      setMode('garden');
+    } else if (STUDIO_MODES.includes(preset.mode as StudioMode)) {
       setStudioMode(preset.mode as StudioMode);
       setMode('studio');
     } else {
@@ -2486,7 +2491,7 @@ export default function App() {
           <NavButton 
             active={mode === 'studio'} 
             onClick={() => {
-              setStudioMode('garden');
+              setStudioMode('chants');
               setMode('studio');
             }} 
             icon={<LayoutGrid size={24} />} 
@@ -2816,7 +2821,10 @@ export default function App() {
                     onUpdate={setUserProfile}
                     sessionCount={gardenEntries.length}
                     hasStudio={studio.hasStudio}
-                    onOpenStudio={() => setMode('studio')}
+                    onOpenStudio={() => {
+                      setStudioMode('chants');
+                      setMode('studio');
+                    }}
                   />
                 </motion.div>
               )}
@@ -2873,17 +2881,6 @@ export default function App() {
                             if (recordedUrl) URL.revokeObjectURL(recordedUrl);
                             setRecordedUrl(null);
                           }}
-                        />
-                      ),
-                      garden: (
-                        <RitualGardenStudioView
-                          entries={gardenEntries}
-                          rooms={gardenRooms}
-                          onRoomsChange={setGardenRooms}
-                          placements={gardenPlacements}
-                          onPlacementsChange={setGardenPlacements}
-                          onReplay={(entry) => launchMoodSession(entry.moodId)}
-                          triggerHaptic={triggerHaptic}
                         />
                       ),
                       reiki: <ReikiView />,
@@ -3364,8 +3361,9 @@ function StudioView({
   studioContent: Record<StudioMode, React.ReactNode>;
 }) {
   const modes: Array<{ id: StudioMode; label: string }> = [
-    { id: 'garden', label: 'Garden' },
+    { id: 'chants', label: 'Chants' },
     { id: 'handpan', label: 'Handpan' },
+    { id: 'reiki', label: 'Reiki' },
     { id: 'tapping', label: 'Tapping' },
     { id: 'guide', label: 'Guide' },
     { id: 'about', label: 'About' }
