@@ -419,6 +419,7 @@ interface GardenEntry {
 type GardenElementType = 'stone' | 'sandRipple' | 'waterLine' | 'lantern' | 'bamboo' | 'lotus';
 type GardenBackdrop = 'sand' | 'moss' | 'water' | 'stone';
 type GardenAmbient = 'wind' | 'water' | 'birds' | 'silence';
+type SandTool = 'rake' | 'stone' | 'smooth';
 
 interface ElementPlacement {
   roomId: string;
@@ -439,8 +440,54 @@ interface GardenRoom {
 const DEFAULT_GARDEN_ROOMS: GardenRoom[] = [
   { id: 'morning', name: 'Morning', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'sand', ambientId: 'wind' },
   { id: 'still', name: 'Still water', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'water', ambientId: 'water' },
-  { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'stone', ambientId: 'silence' },
+  { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'moss', ambientId: 'silence' },
 ];
+
+const GARDEN_BACKDROPS: GardenBackdrop[] = ['sand', 'water', 'moss', 'stone'];
+const GARDEN_AMBIENTS: GardenAmbient[] = ['wind', 'water', 'birds', 'silence'];
+
+const GARDEN_BACKDROP_LABELS: Record<GardenBackdrop, string> = {
+  sand: 'Warm sand',
+  water: 'Still water',
+  moss: 'Living moss',
+  stone: 'Quiet stone',
+};
+
+const GARDEN_AMBIENT_LABELS: Record<GardenAmbient, string> = {
+  wind: 'Soft wind',
+  water: 'Ripples',
+  birds: 'Canopy',
+  silence: 'Silence',
+};
+
+const GARDEN_ROOM_TOOL_LABELS: Record<string, Record<SandTool, string>> = {
+  morning: { rake: 'Trace', stone: 'Set stone', smooth: 'Clear sand' },
+  still: { rake: 'Ripple', stone: 'Anchor', smooth: 'Still water' },
+  moss: { rake: 'Comb moss', stone: 'Set stone', smooth: 'Soften' },
+};
+
+const GARDEN_TOOL_LABELS: Record<SandTool, string> = {
+  rake: 'Trace',
+  stone: 'Set stone',
+  smooth: 'Soften',
+};
+
+function normalizeGardenRooms(value: unknown): GardenRoom[] {
+  const savedRooms = Array.isArray(value) ? value : [];
+  return DEFAULT_GARDEN_ROOMS.map((defaultRoom) => {
+    const savedRoom = savedRooms.find((room) => room && typeof room === 'object' && (room as GardenRoom).id === defaultRoom.id) as Partial<GardenRoom> | undefined;
+    const savedBackdrop = GARDEN_BACKDROPS.includes(savedRoom?.backdrop as GardenBackdrop) ? savedRoom?.backdrop as GardenBackdrop : defaultRoom.backdrop;
+    const savedAmbient = GARDEN_AMBIENTS.includes(savedRoom?.ambientId as GardenAmbient) ? savedRoom?.ambientId as GardenAmbient : defaultRoom.ambientId;
+    return {
+      ...defaultRoom,
+      ...savedRoom,
+      id: defaultRoom.id,
+      name: savedRoom?.name || defaultRoom.name,
+      backdrop: defaultRoom.id === 'moss' && savedBackdrop === 'stone' ? 'moss' : savedBackdrop,
+      ambientId: savedAmbient,
+    };
+  });
+}
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Focus User',
@@ -942,7 +989,7 @@ export default function App() {
     try {
       const saved = getStoredValue('focusflow_garden_rooms');
       const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed.slice(0, 3) : DEFAULT_GARDEN_ROOMS;
+      return normalizeGardenRooms(parsed);
     } catch (error) {
       console.warn('Unable to load garden rooms.', error);
       return DEFAULT_GARDEN_ROOMS;
@@ -3494,7 +3541,6 @@ function GardenElementArt({ entry, size = 96 }: { entry: GardenEntry; size?: num
   );
 }
 
-type SandTool = 'rake' | 'stone' | 'smooth';
 type SandRock = { x: number; y: number; r: number; seed: number };
 
 function InteractiveSandGarden({
@@ -3524,6 +3570,7 @@ function InteractiveSandGarden({
   const [cursor, setCursor] = useState<{ x: number; y: number; visible: boolean; blocked: boolean }>({ x: 0, y: 0, visible: false, blocked: false });
   const roomEntries = entries.filter((entry) => placements[entry.id]?.roomId === activeRoom.id);
   const trayEntries = entries.filter((entry) => !placements[entry.id]);
+  const toolLabels = GARDEN_ROOM_TOOL_LABELS[activeRoom.id] ?? GARDEN_TOOL_LABELS;
 
   const getContext = () => canvasRef.current?.getContext('2d') ?? null;
 
@@ -3714,9 +3761,9 @@ function InteractiveSandGarden({
 
       <div className="sand-toolbar" role="toolbar" aria-label="Garden tools">
         <div className="sand-tool-group">
-          {toolButton('rake', 'Rake', <Waves size={17} />)}
-          {toolButton('stone', 'Stone', <span className="sand-stone-icon" aria-hidden="true" />)}
-          {toolButton('smooth', 'Smooth', <span className="sand-smooth-icon" aria-hidden="true" />)}
+          {toolButton('rake', toolLabels.rake, <Waves size={17} />)}
+          {toolButton('stone', toolLabels.stone, <span className="sand-stone-icon" aria-hidden="true" />)}
+          {toolButton('smooth', toolLabels.smooth, <span className="sand-smooth-icon" aria-hidden="true" />)}
         </div>
         <div className="sand-tool-group sand-actions">
           <button type="button" className="sand-icon-button" disabled={!canUndo} onClick={undo} aria-label="Undo last change" title="Undo"><ArrowLeft size={17} /></button>
@@ -3850,18 +3897,16 @@ function RitualGardenStudioView({
 }) {
   const [activeRoomId, setActiveRoomId] = useState(rooms[0]?.id ?? DEFAULT_GARDEN_ROOMS[0].id);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? DEFAULT_GARDEN_ROOMS[0];
-  const backdrops: GardenBackdrop[] = ['sand', 'moss', 'water', 'stone'];
-  const ambients: GardenAmbient[] = ['wind', 'water', 'birds', 'silence'];
 
   const cycleRoomBackdrop = () => {
     onRoomsChange(rooms.map((room) => room.id === activeRoom.id
-      ? { ...room, backdrop: backdrops[(backdrops.indexOf(room.backdrop) + 1) % backdrops.length] }
+      ? { ...room, backdrop: GARDEN_BACKDROPS[(GARDEN_BACKDROPS.indexOf(room.backdrop) + 1) % GARDEN_BACKDROPS.length] }
       : room));
   };
 
   const cycleRoomAmbient = () => {
     onRoomsChange(rooms.map((room) => room.id === activeRoom.id
-      ? { ...room, ambientId: ambients[(ambients.indexOf(room.ambientId) + 1) % ambients.length] }
+      ? { ...room, ambientId: GARDEN_AMBIENTS[(GARDEN_AMBIENTS.indexOf(room.ambientId) + 1) % GARDEN_AMBIENTS.length] }
       : room));
   };
 
@@ -3877,8 +3922,8 @@ function RitualGardenStudioView({
             {room.name || 'Untitled'}
           </button>
         ))}
-        <button onClick={cycleRoomBackdrop} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Ground: {activeRoom.backdrop}</button>
-        <button onClick={cycleRoomAmbient} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Air: {activeRoom.ambientId}</button>
+        <button onClick={cycleRoomBackdrop} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Ground: {GARDEN_BACKDROP_LABELS[activeRoom.backdrop]}</button>
+        <button onClick={cycleRoomAmbient} className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-app-muted">Air: {GARDEN_AMBIENT_LABELS[activeRoom.ambientId]}</button>
       </div>
       <InteractiveSandGarden
         triggerHaptic={triggerHaptic}
