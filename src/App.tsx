@@ -462,8 +462,8 @@ const GARDEN_AMBIENT_LABELS: Record<GardenAmbient, string> = {
 
 const GARDEN_ROOM_TOOL_LABELS: Record<string, Record<SandTool, string>> = {
   morning: { rake: 'Trace', stone: 'Set stone', smooth: 'Clear sand' },
-  still: { rake: 'Ripple', stone: 'Anchor', smooth: 'Still water' },
-  moss: { rake: 'Comb moss', stone: 'Set stone', smooth: 'Soften' },
+  still: { rake: 'Ripple', stone: 'Anchor', smooth: 'Settle' },
+  moss: { rake: 'Comb moss', stone: 'Place stone', smooth: 'Soften' },
 };
 
 const GARDEN_TOOL_LABELS: Record<SandTool, string> = {
