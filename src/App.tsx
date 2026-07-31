@@ -439,7 +439,7 @@ interface GardenRoom {
 const DEFAULT_GARDEN_ROOMS: GardenRoom[] = [
   { id: 'morning', name: 'Morning', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'sand', ambientId: 'wind' },
   { id: 'still', name: 'Still water', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'water', ambientId: 'water' },
-  { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'moss', ambientId: 'birds' },
+  { id: 'moss', name: 'Moss', createdAt: '2026-01-01T00:00:00.000Z', backdrop: 'stone', ambientId: 'silence' },
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
